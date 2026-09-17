@@ -1,0 +1,11 @@
+name = "g-world-api"
+main = "worker/src/index.js"
+compatibility_date = "2026-09-17"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "g-world"
+database_id = "82ca910b-dc66-469e-af69-c84b3290838e"
+
+[vars]
+ENVIRONMENT = "development"
