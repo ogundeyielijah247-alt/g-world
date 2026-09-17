@@ -1,0 +1,11 @@
+name="g-world-api"
+main="src/index.js"
+compatibility_date="2026-09-17"
+
+[[d1_databases]]
+binding="DB"
+database_name="g-world"
+database_id="REPLACE_AFTER_CREATING_D1_DATABASE"
+
+[vars]
+ENVIRONMENT="development"

@@ -1,0 +1,150 @@
+import "./style.css";
+
+const app = document.querySelector("#app");
+const state = { screen: "splash", member: null, error: "", loading: false };
+
+// Set VITE_API_BASE_URL when the frontend and API are deployed separately.
+// Leave it empty when the API is served from the same origin.
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+
+function render() {
+  if (state.screen === "splash") {
+    app.innerHTML = `
+      <main class="intro" aria-label="Entering G WORLD">
+        <div class="intro-glow"></div>
+        <img class="master-logo" src="/assets/gworld-master-logo.png" alt="G WORLD — Discover What You Need to Know.">
+        <div class="intro-line"></div>
+        <div class="intro-status">ENTERING G WORLD</div>
+      </main>`;
+    return;
+  }
+
+  if (state.screen === "onboard") {
+    app.innerHTML = `<main class="center enter-screen">
+      <section class="panel">
+        <div class="form-brand"><span>G</span><b>G WORLD</b></div>
+        <div class="eyebrow">WELCOME TO G WORLD</div>
+        <h1>Start your journey.</h1>
+        <p>Enter your basic details. Your G WORLD ID and digital member card will be created automatically.</p>
+        <form id="f" novalidate>
+          <label>Full Name<input name="name" required autocomplete="name" placeholder="Your full name" maxlength="80"><small class="field-error" data-error="name"></small></label>
+          <label>Phone Number<input name="phone" required autocomplete="tel" placeholder="Your phone number" maxlength="30"><small class="field-error" data-error="phone"></small></label>
+          <label>Email <small>(optional)</small><input name="email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="120"><small class="field-error" data-error="email"></small></label>
+          <small class="form-error" id="form-error">${esc(state.error)}</small>
+          <button class="primary full" type="submit" ${state.loading ? "disabled" : ""}>${state.loading ? "CREATING YOUR G WORLD ID…" : "CREATE MY G WORLD ID"}</button>
+        </form>
+        <small class="privacy-note">Your G WORLD ID is a platform identity. It is not a government ID or password.</small>
+        <div class="form-footnote">Your details are submitted securely to the G WORLD registration service.</div>
+      </section>
+    </main>`;
+    return;
+  }
+
+  if (state.screen === "card") {
+    const m = state.member;
+    app.innerHTML = `<main class="center">
+      <div class="card">
+        <header><div class="mini"><b>G</b><span><strong>G WORLD</strong><small>Discover What You Need to Know.</small></span></div></header>
+        <section>
+          <em>WELCOME TO G WORLD</em><h2>${esc(m.name)}</h2>
+          <div class="info">
+            <div><small>PHONE</small><strong>${esc(m.phone)}</strong></div>
+            <div><small>STATUS</small><strong>${esc(m.status)}</strong></div>
+            <div><small>G WORLD ID</small><strong>${esc(m.gworldId)}</strong></div>
+          </div>
+          <div class="qr"><div>▦</div><small>SCAN TO VERIFY<br>THIS G WORLD MEMBER</small></div>
+        </section>
+        <footer><b>Welcome to G WORLD!</b><span>Your learning journey starts here.</span><span>Stay committed. Keep learning. Grow with G WORLD.</span></footer>
+      </div>
+      <button class="primary" data-a="home">ENTER G WORLD</button>
+      <button class="link" data-a="reset">Start over</button>
+    </main>`;
+    return;
+  }
+
+  if (state.screen === "home") {
+    const m = state.member;
+    app.innerHTML = `<main class="home">
+      <nav><div class="mini"><b>G</b> G WORLD</div><span>${esc(m.name)}</span></nav>
+      <section class="hero"><div class="eyebrow">G WORLD</div><h1>Discover what you need to know.</h1><p>Useful knowledge. Clear learning. Practical growth.</p><button class="primary">TALK TO G WORLD</button></section>
+      <section class="continue"><div><div class="eyebrow">YOUR G WORLD</div><h2>Welcome, ${esc(m.name)}.</h2><p>Your learning journey is ready for the next phase.</p></div><code>${esc(m.gworldId)}</code></section>
+      <section class="doors"><h2>Explore G WORLD</h2><div class="grid">${["Courses","Tech Skills","AI & Technology","Opportunities","Discoveries & Research","Project Writer","Academic Resources","Work Ready"].map((x,i)=>`<article><small>0${i+1}</small><h3>${x}</h3><p>${i ? "Prepared for a future G WORLD module." : "Learning pathways will open in Phase 2."}</p></article>`).join("")}</div></section>
+      <footer>G WORLD · Discover What You Need to Know.</footer>
+    </main>`;
+  }
+}
+
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-a]")?.dataset.a;
+  if (a === "home") { state.screen = "home"; render(); }
+  if (a === "reset") { localStorage.removeItem("gworld"); state.member = null; state.error = ""; state.screen = "splash"; render(); startIntro(); }
+});
+
+document.addEventListener("submit", async e => {
+  if (e.target.id !== "f") return;
+  e.preventDefault();
+
+  const form = e.target;
+  const d = Object.fromEntries(new FormData(form));
+  const name = String(d.name || "").trim();
+  const phone = String(d.phone || "").trim();
+  const email = String(d.email || "").trim();
+  let ok = true;
+
+  const setErr = (field, message) => {
+    const el = form.querySelector(`[data-error="${field}"]`);
+    if (el) el.textContent = message || "";
+    if (message) ok = false;
+  };
+
+  setErr("name", name.length < 2 ? "Please enter your full name." : "");
+  setErr("phone", phone.replace(/\D/g, "").length < 7 ? "Please enter a valid phone number." : "");
+  setErr("email", email && !/^\S+@\S+\.\S+$/.test(email) ? "Please enter a valid email or leave it blank." : "");
+  if (!ok) return;
+
+  state.loading = true;
+  state.error = "";
+  render();
+
+  try {
+    const response = await fetch(`${API_BASE}/api/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, phone, email }),
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      state.error = result.error || "Registration could not be completed. Please try again.";
+      state.loading = false;
+      render();
+      return;
+    }
+
+    state.member = result.member;
+    localStorage.setItem("gworld", JSON.stringify(state.member));
+    state.loading = false;
+    state.error = "";
+    state.screen = "card";
+    render();
+  } catch (error) {
+    console.error(error);
+    state.error = "G WORLD could not connect to the registration service. Please check the connection and try again.";
+    state.loading = false;
+    render();
+  }
+});
+
+function startIntro() {
+  setTimeout(() => {
+    state.screen = state.member ? "home" : "onboard";
+    render();
+  }, 2800);
+}
+
+const saved = localStorage.getItem("gworld");
+if (saved) try { state.member = JSON.parse(saved); } catch { localStorage.removeItem("gworld"); }
+render();
+startIntro();

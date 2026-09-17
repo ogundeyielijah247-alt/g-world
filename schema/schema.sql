@@ -1,0 +1,43 @@
+PRAGMA foreign_keys=ON;
+
+CREATE TABLE IF NOT EXISTS members (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ gworld_id TEXT NOT NULL UNIQUE,
+ full_name TEXT NOT NULL,
+ phone TEXT NOT NULL UNIQUE,
+ email TEXT UNIQUE,
+ status TEXT NOT NULL DEFAULT 'IN TRAINING',
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS member_profiles (
+ member_id INTEGER PRIMARY KEY,
+ avatar_url TEXT,
+ bio TEXT,
+ professional_presence_status TEXT DEFAULT 'NOT_STARTED',
+ FOREIGN KEY(member_id) REFERENCES members(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS content_items (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ content_type TEXT NOT NULL,
+ slug TEXT NOT NULL UNIQUE,
+ title TEXT NOT NULL,
+ status TEXT NOT NULL DEFAULT 'DRAFT',
+ summary TEXT,
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS audit_events (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ member_id INTEGER,
+ event_type TEXT NOT NULL,
+ metadata_json TEXT,
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(member_id) REFERENCES members(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_members_created_at ON members(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_events_member_id ON audit_events(member_id);
