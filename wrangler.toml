@@ -1,4 +1,4 @@
-name = "g-world-api"
+name = "g-world"
 main = "worker/src/index.js"
 compatibility_date = "2026-09-17"
 workers_dev = true
