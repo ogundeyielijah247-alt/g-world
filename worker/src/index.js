@@ -57,6 +57,107 @@ export default {
     }
 
     const url = new URL(request.url);
+    if (url.pathname.startsWith("/verify/") && request.method === "GET") {
+      const gworldId = decodeURIComponent(url.pathname.slice("/verify/".length)).trim();
+
+      if (!gworldId) {
+        return new Response("Invalid G WORLD ID.", { status: 400 });
+      }
+
+      if (!env.DB) {
+        return new Response("Verification service unavailable.", { status: 503 });
+      }
+
+      try {
+        const member = await env.DB
+          .prepare(
+            "SELECT gworld_id, full_name, status, created_at FROM members WHERE gworld_id = ?1 LIMIT 1"
+          )
+          .bind(gworldId)
+          .first();
+
+        if (!member) {
+          return new Response(
+            `<!doctype html>
+            <html>
+              <head>
+                <meta name="viewport" content="width=device-width,initial-scale=1">
+                <title>G WORLD Verification</title>
+                <style>
+                  body{margin:0;background:#050b18;color:#fff;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:24px}
+                  .card{max-width:460px;width:100%;background:#0c1830;border:1px solid #1d4560;border-radius:20px;padding:30px;box-sizing:border-box}
+                  .brand{font-size:24px;font-weight:700;letter-spacing:2px;color:#fff}
+                  .tag{color:#7ee6c5;font-size:13px;margin-top:6px}
+                  h1{font-size:25px;margin:35px 0 10px}
+                  p{color:#b8c4d6;line-height:1.6}
+                  .status{display:inline-block;margin-top:12px;padding:8px 12px;border-radius:20px;background:#3b2024;color:#ff9a9a;font-size:13px}
+                </style>
+              </head>
+              <body>
+                <div class="card">
+                  <div class="brand">G WORLD</div>
+                  <div class="tag">Discover What You Need to Know.</div>
+                  <h1>Member Not Found</h1>
+                  <p>We could not find a G WORLD membership record for this ID.</p>
+                  <div class="status">NOT VERIFIED</div>
+                </div>
+              </body>
+            </html>`,
+            { status: 404, headers: { "content-type": "text/html; charset=UTF-8" } }
+          );
+        }
+
+        return new Response(
+          `<!doctype html>
+          <html>
+            <head>
+              <meta name="viewport" content="width=device-width,initial-scale=1">
+              <title>G WORLD Member Verification</title>
+              <style>
+                body{margin:0;background:#050b18;color:#fff;font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:24px}
+                .card{max-width:460px;width:100%;background:#0c1830;border:1px solid #1d4560;border-radius:20px;padding:30px;box-sizing:border-box}
+                .brand{font-size:24px;font-weight:700;letter-spacing:2px}
+                .tag{color:#7ee6c5;font-size:13px;margin-top:6px}
+                .verified{margin-top:30px;color:#69e6a8;font-weight:700}
+                h1{font-size:27px;margin:10px 0 25px}
+                .row{border-top:1px solid #20344e;padding:15px 0}
+                .label{font-size:11px;color:#8292a8;letter-spacing:1px}
+                .value{font-size:17px;margin-top:6px}
+                .note{margin-top:25px;color:#9eacc0;font-size:13px;line-height:1.6}
+              </style>
+            </head>
+            <body>
+              <div class="card">
+                <div class="brand">G WORLD</div>
+                <div class="tag">Discover What You Need to Know.</div>
+                <div class="verified">✓ VERIFIED G WORLD MEMBER</div>
+                <h1>Membership Verification</h1>
+                <div class="row">
+                  <div class="label">NAME</div>
+                  <div class="value">${clean(member.full_name, 80)}</div>
+                </div>
+                <div class="row">
+                  <div class="label">G WORLD ID</div>
+                  <div class="value">${clean(member.gworld_id, 40)}</div>
+                </div>
+                <div class="row">
+                  <div class="label">STATUS</div>
+                  <div class="value">${clean(member.status, 40)}</div>
+                </div>
+                <div class="note">
+                  This page confirms that the G WORLD membership record exists.
+                  Phone numbers and email addresses are not displayed.
+                </div>
+              </div>
+            </body>
+          </html>`,
+          { status: 200, headers: { "content-type": "text/html; charset=UTF-8" } }
+        );
+      } catch (error) {
+        console.error("Verification error", error);
+        return new Response("Verification service unavailable.", { status: 500 });
+      }
+    }
 
     if (url.pathname === "/api/health" && request.method === "GET") {
       return json({ ok: true, service: "G WORLD API", phase: 1, environment: env.ENVIRONMENT || "unknown" }, 200, request);
