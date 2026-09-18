@@ -6,7 +6,7 @@ workers_dev = true
 [assets]
 directory = "./dist"
 not_found_handling = "single-page-application"
-run_worker_first = ["/verify/*"]
+run_worker_first = ["/api/*", "/verify/*"]
 
 [[d1_databases]]
 binding = "DB"
