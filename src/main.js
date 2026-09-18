@@ -1,4 +1,5 @@
 import "./style.css";
+import QRCode from "qrcode";
 
 const app = document.querySelector("#app");
 const state = { screen: "splash", member: null, error: "", loading: false };
@@ -9,7 +10,25 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 
-function render() {
+async function generateMemberQR() {
+  const canvas = document.querySelector("#member-qr");
+  const m = state.member;
+
+  if (!canvas || !m?.gworldId) return;
+
+  const verificationUrl =
+    `https://g-world.ogundeyielijah13.workers.dev/verify/${encodeURIComponent(m.gworldId)}`;
+
+  try {
+    await QRCode.toCanvas(canvas, verificationUrl, {
+      width: 150,
+      margin: 2,
+      errorCorrectionLevel: "M"
+    });
+  } catch (error) {
+    console.error("QR generation failed", error);
+  }
+}
   if (state.screen === "splash") {
     app.innerHTML = `
       <main class="intro" aria-label="Entering G WORLD">
@@ -54,7 +73,7 @@ function render() {
             <div><small>STATUS</small><strong>${esc(m.status)}</strong></div>
             <div><small>G WORLD ID</small><strong>${esc(m.gworldId)}</strong></div>
           </div>
-          <div class="qr"><div>▦</div><small>SCAN TO VERIFY<br>THIS G WORLD MEMBER</small></div>
+          <div class="qr"><canvas id="member-qr"></canvas><small>SCAN TO VERIFY<br>THIS G WORLD MEMBER</small></div>
         </section>
         <footer><b>Welcome to G WORLD!</b><span>Your learning journey starts here.</span><span>Stay committed. Keep learning. Grow with G WORLD.</span></footer>
       </div>
@@ -123,12 +142,13 @@ document.addEventListener("submit", async e => {
       return;
     }
 
-    state.member = result.member;
-    localStorage.setItem("gworld", JSON.stringify(state.member));
-    state.loading = false;
-    state.error = "";
-    state.screen = "card";
-    render();
+state.member = result.member;
+localStorage.setItem("gworld", JSON.stringify(state.member));
+state.loading = false;
+state.error = "";
+state.screen = "card";
+render();
+generateMemberQR();
   } catch (error) {
     console.error(error);
     state.error = "G WORLD could not connect to the registration service. Please check the connection and try again.";
