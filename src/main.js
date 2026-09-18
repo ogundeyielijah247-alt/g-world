@@ -25,10 +25,12 @@ async function generateMemberQR() {
       margin: 2,
       errorCorrectionLevel: "M"
     });
-  } catch (error) {
+} catch (error) {
     console.error("QR generation failed", error);
   }
 }
+
+function render() {
   if (state.screen === "splash") {
     app.innerHTML = `
       <main class="intro" aria-label="Entering G WORLD">
