@@ -2,6 +2,7 @@ import "./style.css";
 import QRCode from "qrcode";
 
 const app = document.querySelector("#app");
+
 const state = {
   screen: "splash",
   member: null,
@@ -47,11 +48,13 @@ function render() {
     app.innerHTML = `
       <main class="intro" aria-label="Entering G WORLD">
         <div class="intro-glow"></div>
+
         <img
           class="master-logo"
           src="/assets/gworld-master-logo.png"
           alt="G WORLD — Discover What You Need to Know."
         >
+
         <div class="intro-line"></div>
         <div class="intro-status">ENTERING G WORLD</div>
       </main>`;
@@ -307,7 +310,6 @@ function render() {
       </main>`;
     return;
   }
-
   if (state.screen === "home") {
     const m = state.member;
 
@@ -383,108 +385,6 @@ function render() {
           G WORLD · Discover What You Need to Know.
         </footer>
 </main>`;
-  }
-
-  if (state.screen === "python-course") {
-    app.innerHTML = `
-      <main class="home">
-        <nav>
-          <div class="mini">
-            <b>G</b> G WORLD
-          </div>
-
-          <div class="nav-user">
-            <span>${esc(state.member?.name)}</span>
-            <button class="logout-btn" data-a="logout">LOG OUT</button>
-          </div>
-        </nav>
-
-        <section class="hero">
-          <div class="eyebrow">PYTHON FOUNDATIONS · MODULE 1</div>
-
-          <h1>Python Foundations</h1>
-
-          <p>
-            Start from the beginning. Understand the basics, practise what
-            you learn, and build something you can explain.
-          </p>
-        </section>
-
-        <section class="doors">
-          <h2>Your Learning Journey</h2>
-
-          <div class="grid">
-            <article data-a="python-intro">
-  <small>01</small>
-  <h3>Introduction to Python</h3>
-  <p>
-    Understand what Python is, where it is used, and why it matters.
-  </p>
-</article>
-
-            <article>
-              <small>02</small>
-              <h3>Variables & Data Types</h3>
-              <p>Learn how Python stores and works with information.</p>
-            </article>
-
-            <article>
-              <small>03</small>
-              <h3>Input & Output</h3>
-              <p>Learn how programs receive information and respond.</p>
-            </article>
-
-            <article>
-              <small>04</small>
-              <h3>Type Conversion</h3>
-              <p>Understand how to change information from one type to another.</p>
-            </article>
-
-            <article>
-              <small>05</small>
-              <h3>Combining Everything</h3>
-              <p>Bring the concepts together in simple programs.</p>
-            </article>
-
-            <article>
-              <small>06</small>
-              <h3>Mini Practice</h3>
-              <p>Test your understanding with practical exercises.</p>
-            </article>
-
-            <article>
-              <small>07</small>
-              <h3>Module Project</h3>
-              <p>Build your Personal Profile Program.</p>
-            </article>
-
-            <article>
-              <small>08</small>
-              <h3>Project Defence</h3>
-              <p>Explain what you built and why you built it that way.</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="continue">
-          <div>
-            <div class="eyebrow">MODULE PROJECT</div>
-
-            <h2>Personal Profile Program</h2>
-
-            <p>
-              Build a simple Python program that asks for your name, age,
-              location, favourite skill and learning goal.
-            </p>
-          </div>
-
-          <code>MODULE 1</code>
-        </section>
-
-        <footer>
-          G WORLD · Discover What You Need to Know.
-        </footer>
-      </main>`;
   }
 
   if (state.screen === "courses") {
@@ -595,8 +495,8 @@ function render() {
         </footer>
       </main>`;
   }
-}
-if (state.screen === "python-intro") {
+
+  if (state.screen === "python-intro") {
     app.innerHTML = `
       <main class="home">
         <nav>
@@ -678,7 +578,6 @@ if (state.screen === "python-intro") {
         <section class="continue">
           <div>
             <div class="eyebrow">PRACTICE</div>
-
             <h2>Think about this</h2>
 
             <p>
@@ -697,6 +596,8 @@ if (state.screen === "python-intro") {
         </footer>
       </main>`;
   }
+}
+
 document.addEventListener("click", e => {
   const a = e.target.closest("[data-a]")?.dataset.a;
 
@@ -723,26 +624,31 @@ document.addEventListener("click", e => {
     state.screen = "home";
     render();
   }
+
   if (a === "courses") {
-  state.screen = "courses";
-  render();
-}
+    state.screen = "courses";
+    render();
+  }
+
   if (a === "python-course") {
-  state.screen = "python-course";
-  render();
-}
+    state.screen = "python-course";
+    render();
+  }
+
   if (a === "python-intro") {
-  state.screen = "python-intro";
-  render();
-}
-if (a === "logout") {
-  localStorage.removeItem("gworld");
-  state.member = null;
-  state.error = "";
-  state.loading = false;
-  state.screen = "entry";
-  render();
-}
+    state.screen = "python-intro";
+    render();
+  }
+
+  if (a === "logout") {
+    localStorage.removeItem("gworld");
+    state.member = null;
+    state.error = "";
+    state.loading = false;
+    state.screen = "entry";
+    render();
+  }
+
   if (a === "reset") {
     localStorage.removeItem("gworld");
     state.member = null;
