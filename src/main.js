@@ -313,13 +313,16 @@ function render() {
 
     app.innerHTML = `
       <main class="home">
-        <nav>
-          <div class="mini">
-            <b>G</b> G WORLD
-          </div>
+<nav>
+  <div class="mini">
+    <b>G</b> G WORLD
+  </div>
 
-          <span>${esc(m.name)}</span>
-        </nav>
+  <div class="nav-user">
+    <span>${esc(m.name)}</span>
+    <button class="logout-btn" data-a="logout">LOG OUT</button>
+  </div>
+</nav>
 
         <section class="hero">
           <div class="eyebrow">G WORLD</div>
@@ -409,7 +412,14 @@ document.addEventListener("click", e => {
     state.screen = "home";
     render();
   }
-
+if (a === "logout") {
+  localStorage.removeItem("gworld");
+  state.member = null;
+  state.error = "";
+  state.loading = false;
+  state.screen = "entry";
+  render();
+}
   if (a === "reset") {
     localStorage.removeItem("gworld");
     state.member = null;
