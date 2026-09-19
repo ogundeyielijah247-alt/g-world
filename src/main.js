@@ -414,11 +414,13 @@ function render() {
           <h2>Your Learning Journey</h2>
 
           <div class="grid">
-            <article>
-              <small>01</small>
-              <h3>What is Python?</h3>
-              <p>Understand what Python is and where it is used.</p>
-            </article>
+            <article data-a="python-intro">
+  <small>01</small>
+  <h3>Introduction to Python</h3>
+  <p>
+    Understand what Python is, where it is used, and why it matters.
+  </p>
+</article>
 
             <article>
               <small>02</small>
@@ -594,7 +596,108 @@ function render() {
       </main>`;
   }
 }
+if (state.screen === "python-intro") {
+    app.innerHTML = `
+      <main class="home">
+        <nav>
+          <div class="mini">
+            <b>G</b> G WORLD
+          </div>
 
+          <div class="nav-user">
+            <span>${esc(state.member?.name)}</span>
+            <button class="logout-btn" data-a="logout">LOG OUT</button>
+          </div>
+        </nav>
+
+        <section class="hero">
+          <div class="eyebrow">PYTHON FOUNDATIONS · LESSON 1</div>
+
+          <h1>Introduction to Python</h1>
+
+          <p>
+            Before writing code, let's understand what Python is,
+            where it is used, and why people use it.
+          </p>
+        </section>
+
+        <section class="continue">
+          <div>
+            <div class="eyebrow">KNOW</div>
+
+            <h2>What is Python?</h2>
+
+            <p>
+              Python is a programming language that allows people
+              to give instructions to a computer in a way that is
+              relatively easy to read and understand.
+            </p>
+
+            <p>
+              It is used for many things, including automation,
+              data analysis, web development, artificial intelligence,
+              research and software development.
+            </p>
+          </div>
+        </section>
+
+        <section class="doors">
+          <h2>Understand Before You Practise</h2>
+
+          <div class="grid">
+            <article>
+              <small>01</small>
+              <h3>Python is a language</h3>
+              <p>
+                Just as people use languages to communicate,
+                programmers use Python to communicate instructions
+                to computers.
+              </p>
+            </article>
+
+            <article>
+              <small>02</small>
+              <h3>Python is readable</h3>
+              <p>
+                Python was designed with readability in mind,
+                making it a useful language for beginners.
+              </p>
+            </article>
+
+            <article>
+              <small>03</small>
+              <h3>Python can build things</h3>
+              <p>
+                You can use Python to solve problems, automate tasks,
+                analyse information and build useful programs.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="continue">
+          <div>
+            <div class="eyebrow">PRACTICE</div>
+
+            <h2>Think about this</h2>
+
+            <p>
+              If Python is a language used to communicate with a
+              computer, what do you think a Python program is?
+            </p>
+          </div>
+
+          <button class="primary">
+            CONTINUE
+          </button>
+        </section>
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+      </main>`;
+  }
+}
 document.addEventListener("click", e => {
   const a = e.target.closest("[data-a]")?.dataset.a;
 
@@ -627,6 +730,10 @@ document.addEventListener("click", e => {
 }
   if (a === "python-course") {
   state.screen = "python-course";
+  render();
+}
+  if (a === "python-intro") {
+  state.screen = "python-intro";
   render();
 }
 if (a === "logout") {
