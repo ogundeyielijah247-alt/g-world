@@ -366,7 +366,7 @@ function render() {
               "Academic Resources",
               "Work Ready"
             ].map((x, i) => `
-              <article>
+             <article class="${x === "Courses" ? "course-door" : ""}" data-a="${x === "Courses" ? "courses" : ""}">
                 <small>0${i + 1}</small>
                 <h3>${x}</h3>
                 <p>
