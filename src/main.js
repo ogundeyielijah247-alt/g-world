@@ -5,10 +5,28 @@ const app = document.querySelector("#app");
 
 const state = {
   screen: "splash",
+  history: [],
   member: null,
   error: "",
   loading: false
 };
+
+function goTo(screen) {
+  if (state.screen !== screen) {
+    state.history.push(state.screen);
+  }
+
+  state.screen = screen;
+  render();
+}
+
+function goBack() {
+  if (!state.history.length) return;
+
+  const previousScreen = state.history.pop();
+  state.screen = previousScreen;
+  render();
+}
 
 // Set VITE_API_BASE_URL when the frontend and API are deployed separately.
 // Leave it empty when the API is served from the same origin.
