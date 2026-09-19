@@ -366,7 +366,7 @@ function render() {
               "Academic Resources",
               "Work Ready"
             ].map((x, i) => `
-             <article class="${x === "Courses" ? "course-door" : ""}" data-a="${x === "Courses" ? "courses" : ""}">
+             <article class="${x === "Courses" ? "course-door" : ""}" data-a="${x === "Courses" ? "courses" : ""}" style="${x === "Courses" ? "cursor:pointer" : ""}">
                 <small>0${i + 1}</small>
                 <h3>${x}</h3>
                 <p>
