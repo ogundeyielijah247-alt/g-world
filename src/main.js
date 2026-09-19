@@ -458,6 +458,10 @@ document.addEventListener("click", e => {
     state.screen = "home";
     render();
   }
+  if (a === "courses") {
+  state.screen = "courses";
+  render();
+}
 if (a === "logout") {
   localStorage.removeItem("gworld");
   state.member = null;
