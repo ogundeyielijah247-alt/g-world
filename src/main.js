@@ -382,6 +382,52 @@ function render() {
         <footer>
           G WORLD · Discover What You Need to Know.
         </footer>
+</main>`;
+  }
+
+  if (state.screen === "courses") {
+    app.innerHTML = `
+      <main class="home">
+        <nav>
+          <div class="mini">
+            <b>G</b> G WORLD
+          </div>
+
+          <div class="nav-user">
+            <span>${esc(state.member?.name)}</span>
+            <button class="logout-btn" data-a="logout">LOG OUT</button>
+          </div>
+        </nav>
+
+        <section class="hero">
+          <div class="eyebrow">COURSES</div>
+
+          <h1>Learn something that moves you forward.</h1>
+
+          <p>
+            Explore structured learning journeys designed to help you
+            understand, practise, build and prove what you know.
+          </p>
+        </section>
+
+        <section class="doors">
+          <h2>Featured Course</h2>
+
+          <div class="grid">
+            <article data-a="python-course">
+              <small>01</small>
+              <h3>Python Foundations</h3>
+              <p>
+                Start learning Python from the foundations through
+                explanation, practice, projects and verification.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
       </main>`;
   }
 }
