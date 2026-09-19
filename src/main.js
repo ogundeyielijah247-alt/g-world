@@ -428,6 +428,69 @@ function render() {
         <footer>
           G WORLD · Discover What You Need to Know.
         </footer>
+</main>`;
+  }
+
+  if (state.screen === "python-course") {
+    app.innerHTML = `
+      <main class="home">
+        <nav>
+          <div class="mini">
+            <b>G</b> G WORLD
+          </div>
+
+          <div class="nav-user">
+            <span>${esc(state.member?.name)}</span>
+            <button class="logout-btn" data-a="courses">BACK TO COURSES</button>
+          </div>
+        </nav>
+
+        <section class="hero">
+          <div class="eyebrow">PYTHON FOUNDATIONS</div>
+
+          <h1>Start learning Python.</h1>
+
+          <p>
+            Learn Python step by step, from the foundations to practical
+            projects and verification.
+          </p>
+        </section>
+
+        <section class="doors">
+          <h2>Course Overview</h2>
+
+          <div class="grid">
+            <article>
+              <small>01</small>
+              <h3>Introduction to Python</h3>
+              <p>
+                Understand what Python is, what it can do, and where it is
+                used.
+              </p>
+            </article>
+
+            <article>
+              <small>02</small>
+              <h3>Python Basics</h3>
+              <p>
+                Learn variables, data types, operators and basic Python
+                instructions.
+              </p>
+            </article>
+
+            <article>
+              <small>03</small>
+              <h3>Practice</h3>
+              <p>
+                Test what you have learned with simple exercises.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
       </main>`;
   }
 }
@@ -460,6 +523,10 @@ document.addEventListener("click", e => {
   }
   if (a === "courses") {
   state.screen = "courses";
+  render();
+}
+  if (a === "python-course") {
+  state.screen = "python-course";
   render();
 }
 if (a === "logout") {
