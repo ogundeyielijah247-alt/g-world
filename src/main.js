@@ -419,6 +419,7 @@ function render() {
   if (state.screen === "courses") {
     app.innerHTML = `
       <main class="home">
+      ${backButton()}
         <nav>
           <div class="mini">
             <b>G</b> G WORLD
