@@ -697,7 +697,6 @@ if (state.screen === "python-intro") {
         </footer>
       </main>`;
   }
-}
 document.addEventListener("click", e => {
   const a = e.target.closest("[data-a]")?.dataset.a;
 
