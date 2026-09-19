@@ -62,6 +62,17 @@ async function generateMemberQR() {
 }
 
 function render() {
+
+  function backButton() {
+    if (!state.history.length) return "";
+
+    return `
+      <button class="link" data-a="back">
+        ← Back
+      </button>
+    `;
+  }
+
   if (state.screen === "splash") {
     app.innerHTML = `
       <main class="intro" aria-label="Entering G WORLD">
@@ -638,25 +649,25 @@ document.addEventListener("click", e => {
     render();
   }
 
-  if (a === "home") {
-    state.screen = "home";
-    render();
-  }
+if (a === "home") {
+  goTo("home");
+}
 
-  if (a === "courses") {
-    state.screen = "courses";
-    render();
-  }
+if (a === "courses") {
+  goTo("courses");
+}
 
-  if (a === "python-course") {
-    state.screen = "python-course";
-    render();
-  }
+if (a === "python-course") {
+  goTo("python-course");
+}
 
-  if (a === "python-intro") {
-    state.screen = "python-intro";
-    render();
-  }
+if (a === "python-intro") {
+  goTo("python-intro");
+}
+
+if (a === "back") {
+  goBack();
+}
 
   if (a === "logout") {
     localStorage.removeItem("gworld");
