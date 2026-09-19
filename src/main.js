@@ -462,7 +462,7 @@ function render() {
           <h2>Course Overview</h2>
 
           <div class="grid">
-            <article>
+          <article data-a="python-intro">
               <small>01</small>
               <h3>Introduction to Python</h3>
               <p>
