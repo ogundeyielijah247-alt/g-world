@@ -219,7 +219,115 @@ export default {
         return json({ ok: false, error: "We could not complete your registration. Please try again." }, 500, request);
       }
     }
+if (url.pathname === "/api/member-login" && request.method === "POST") {
+      if (!env.DB) {
+        return json(
+          { ok: false, error: "Database is not connected yet." },
+          503,
+          request
+        );
+      }
 
+      let body;
+
+      try {
+        body = await request.json();
+      } catch {
+        return json(
+          { ok: false, error: "Invalid request." },
+          400,
+          request
+        );
+      }
+
+      const name = clean(body.name, 80);
+      const email = clean(body.email, 120);
+
+      if (name.length < 2) {
+        return json(
+          {
+            ok: false,
+            field: "name",
+            error: "Please enter your full name."
+          },
+          400,
+          request
+        );
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return json(
+          {
+            ok: false,
+            field: "email",
+            error: "Please enter a valid email."
+          },
+          400,
+          request
+        );
+      }
+
+      try {
+        const member = await env.DB
+          .prepare(
+            `SELECT
+              id,
+              gworld_id,
+              full_name,
+              phone,
+              email,
+              status,
+              created_at
+             FROM members
+             WHERE lower(trim(full_name)) = lower(trim(?1))
+             AND lower(trim(email)) = lower(trim(?2))
+             LIMIT 1`
+          )
+          .bind(name, email)
+          .first();
+
+        if (!member) {
+          return json(
+            {
+              ok: false,
+              error:
+                "We could not find a G WORLD account with those details."
+            },
+            404,
+            request
+          );
+        }
+
+        return json(
+          {
+            ok: true,
+            member: {
+              name: member.full_name,
+              phone: member.phone,
+              email: member.email,
+              gworldId: member.gworld_id,
+              status: member.status,
+              createdAt: member.created_at
+            }
+          },
+          200,
+          request
+        );
+      } catch (error) {
+        console.error("Member login error", error);
+
+        return json(
+          {
+            ok: false,
+            error:
+              "We could not access your G WORLD account. Please try again."
+          },
+          500,
+          request
+        );
+      }
+    }
+    
     return json({ ok: false, error: "Not found." }, 404, request);
   },
 };
