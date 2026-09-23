@@ -22,15 +22,17 @@ function goTo(screen) {
 
   state.screen = screen;
   render();
-}
 
-function goBack() {
-  if (!state.history.length) return;
+  state.screen = screen;
+render();
 
-  const previousScreen = state.history.pop();
-
-  state.screen = previousScreen;
-  render();
+requestAnimationFrame(() => {
+  window.scrollTo({
+    top: 0,
+    left: 0,
+    behavior: "auto"
+  });
+});
 }
 
 function goBack() {
