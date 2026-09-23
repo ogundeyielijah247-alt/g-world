@@ -718,126 +718,6 @@ function render() {
       </footer>
     </main>`;
 }
-
-  if (state.screen === "python-practice") {
-  app.innerHTML = `
-    <main class="home">
-      ${backButton()}
-
-      <nav>
-        <div class="mini">
-          <b>G</b> G WORLD
-        </div>
-
-        <div class="nav-user">
-          <span>${esc(state.member?.name)}</span>
-          <button class="logout-btn" data-a="logout">LOG OUT</button>
-        </div>
-      </nav>
-
-      <section class="hero">
-        <div class="eyebrow">PYTHON FOUNDATIONS · PRACTICE</div>
-
-        <h1>Let's see what you understand.</h1>
-
-        <p>
-          Take a moment to think about what you have just learned.
-          There is no pressure to get it right the first time.
-        </p>
-      </section>
-
-      <section class="continue">
-        <div>
-          <div class="eyebrow">QUESTION 1</div>
-
-          <h2>What is Python?</h2>
-
-          <p>
-            Choose the answer that best explains what Python is.
-          </p>
-        </div>
-      </section>
-
-      <section class="doors">
-        <div class="grid">
-
-         <article data-a="python-answer-wrong">
-  <h3>A</h3>
-  <p>
-    A type of computer hardware.
-  </p>
-</article>
-
-<article data-a="python-answer-correct">
-  <h3>B</h3>
-  <p>
-    A programming language used to give instructions
-    to a computer.
-  </p>
-</article>
-
-<article data-a="python-answer-wrong">
-  <h3>C</h3>
-  <p>
-    A social media platform.
-  </p>
-</article>
-
-<article data-a="python-answer-wrong">
-  <h3>D</h3>
-  <p>
-    An operating system.
-  </p>
-</article>
-
-<div id="python-feedback" class="python-feedback"></div>
-</div>
-      </section>
-      
-      <footer>
-        G WORLD · Discover What You Need to Know.
-      </footer>
-    </main>`;
-  }
-}
-
-document.addEventListener("click", e => {
-  const a = e.target.closest("[data-a]")?.dataset.a;
-
-  if (a === "new-member") {
-    state.error = "";
-    state.screen = "onboard";
-    render();
-  }
-
-  if (a === "existing-member") {
-    state.error = "";
-    state.screen = "existing";
-    render();
-  }
-
-  if (a === "back-entry") {
-    state.error = "";
-    state.loading = false;
-    state.screen = "entry";
-    render();
-  }
-
-if (a === "home") {
-  goTo("home");
-}
-
-if (a === "courses") {
-  goTo("courses");
-}
-
-if (a === "python-course") {
-  goTo("python-course");
-}
-
-if (a === "python-intro") {
-  goTo("python-intro");
-}
 if (state.screen === "python-lesson-2") {
     app.innerHTML = `
       <main class="home">
@@ -999,6 +879,206 @@ if (state.screen === "python-lesson-2") {
         </footer>
       </main>`;
   }
+  if (state.screen === "python-lesson-2-practice") {
+  app.innerHTML = `
+    <main class="home">
+      ${backButton()}
+
+      <nav>
+        <div class="mini">
+          <b>G</b> G WORLD
+        </div>
+
+        <div class="nav-user">
+          <span>${esc(state.member?.name)}</span>
+          <button class="logout-btn" data-a="logout">LOG OUT</button>
+        </div>
+      </nav>
+
+      <section class="hero">
+        <div class="eyebrow">PYTHON FOUNDATIONS · LESSON 2 PRACTICE</div>
+
+        <h1>Let's test what you learned.</h1>
+
+        <p>
+          Think carefully about what the print() instruction
+          does in Python.
+        </p>
+      </section>
+
+      <section class="continue">
+        <div>
+          <div class="eyebrow">QUESTION 1</div>
+
+          <h2>What does print("Hello") do?</h2>
+
+          <p>
+            Choose the answer that best explains what happens
+            when Python runs this instruction.
+          </p>
+        </div>
+      </section>
+
+      <section class="doors">
+        <div class="grid">
+
+          <article data-a="python-lesson-2-answer-wrong">
+            <h3>A</h3>
+            <p>
+              It deletes the word Hello.
+            </p>
+          </article>
+
+          <article data-a="python-lesson-2-answer-correct">
+            <h3>B</h3>
+            <p>
+              It displays the word Hello on the screen.
+            </p>
+          </article>
+
+          <article data-a="python-lesson-2-answer-wrong">
+            <h3>C</h3>
+            <p>
+              It turns off the computer.
+            </p>
+          </article>
+
+          <article data-a="python-lesson-2-answer-wrong">
+            <h3>D</h3>
+            <p>
+              It creates a new programming language.
+            </p>
+          </article>
+
+        </div>
+      </section>
+
+      <div id="python-lesson-2-feedback" class="python-feedback"></div>
+
+      <footer>
+        G WORLD · Discover What You Need to Know.
+      </footer>
+    </main>`;
+}
+  if (state.screen === "python-practice") {
+  app.innerHTML = `
+    <main class="home">
+      ${backButton()}
+
+      <nav>
+        <div class="mini">
+          <b>G</b> G WORLD
+        </div>
+
+        <div class="nav-user">
+          <span>${esc(state.member?.name)}</span>
+          <button class="logout-btn" data-a="logout">LOG OUT</button>
+        </div>
+      </nav>
+
+      <section class="hero">
+        <div class="eyebrow">PYTHON FOUNDATIONS · PRACTICE</div>
+
+        <h1>Let's see what you understand.</h1>
+
+        <p>
+          Take a moment to think about what you have just learned.
+          There is no pressure to get it right the first time.
+        </p>
+      </section>
+
+      <section class="continue">
+        <div>
+          <div class="eyebrow">QUESTION 1</div>
+
+          <h2>What is Python?</h2>
+
+          <p>
+            Choose the answer that best explains what Python is.
+          </p>
+        </div>
+      </section>
+
+      <section class="doors">
+        <div class="grid">
+
+         <article data-a="python-answer-wrong">
+  <h3>A</h3>
+  <p>
+    A type of computer hardware.
+  </p>
+</article>
+
+<article data-a="python-answer-correct">
+  <h3>B</h3>
+  <p>
+    A programming language used to give instructions
+    to a computer.
+  </p>
+</article>
+
+<article data-a="python-answer-wrong">
+  <h3>C</h3>
+  <p>
+    A social media platform.
+  </p>
+</article>
+
+<article data-a="python-answer-wrong">
+  <h3>D</h3>
+  <p>
+    An operating system.
+  </p>
+</article>
+
+<div id="python-feedback" class="python-feedback"></div>
+</div>
+      </section>
+      
+      <footer>
+        G WORLD · Discover What You Need to Know.
+      </footer>
+    </main>`;
+  }
+}
+
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-a]")?.dataset.a;
+
+  if (a === "new-member") {
+    state.error = "";
+    state.screen = "onboard";
+    render();
+  }
+
+  if (a === "existing-member") {
+    state.error = "";
+    state.screen = "existing";
+    render();
+  }
+
+  if (a === "back-entry") {
+    state.error = "";
+    state.loading = false;
+    state.screen = "entry";
+    render();
+  }
+
+if (a === "home") {
+  goTo("home");
+}
+
+if (a === "courses") {
+  goTo("courses");
+}
+
+if (a === "python-course") {
+  goTo("python-course");
+}
+
+if (a === "python-intro") {
+  goTo("python-intro");
+}
   
 if (a === "python-practice") {
   goTo("python-practice");
@@ -1007,8 +1087,73 @@ if (a === "python-practice") {
   goTo("python-lesson-2");
 }
   if (a === "python-lesson-2-practice") {
-  alert("LESSON 2 PRACTICE BUTTON CLICKED");
   goTo("python-lesson-2-practice");
+}
+
+if (
+  a === "python-lesson-2-answer-correct" ||
+  a === "python-lesson-2-answer-wrong"
+) {
+  const feedback = document.querySelector(
+    "#python-lesson-2-feedback"
+  );
+
+  if (feedback) {
+    if (a === "python-lesson-2-answer-correct") {
+      feedback.innerHTML = `
+        <div class="feedback-card">
+          <h3>✓ Correct!</h3>
+
+          <p>Well done.</p>
+
+          <p>
+            print("Hello") tells Python to display
+            the word Hello on the screen.
+          </p>
+
+          <button
+            type="button"
+            class="logout-btn"
+            data-a="python-lesson-2-continue"
+          >
+            CONTINUE →
+          </button>
+        </div>
+      `;
+    } else {
+      feedback.innerHTML = `
+        <div class="feedback-card">
+          <h3>↻ Not quite</h3>
+
+          <p>
+            That's not the correct answer.
+          </p>
+
+          <p>
+            Remember: print() is used to display
+            information on the screen.
+          </p>
+
+          <button
+            type="button"
+            class="logout-btn"
+            data-a="python-lesson-2-practice"
+          >
+            TRY AGAIN
+          </button>
+        </div>
+      `;
+    }
+
+    feedback.scrollIntoView({
+      behavior: "smooth",
+      block: "center"
+    });
+  }
+}
+
+if (a === "python-lesson-2-continue") {
+  goTo("python-course");
 }
 
   if (a === "python-continue") {
