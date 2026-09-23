@@ -783,6 +783,11 @@ console.log("Python answer click detected:", a);
           <button type="button" class="logout-btn">CONTINUE →</button>
         </div>
       `;
+
+      feedback.scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+      });
     } else {
       feedback.innerHTML = `
         <div class="feedback-card">
@@ -796,9 +801,14 @@ console.log("Python answer click detected:", a);
           <button type="button" class="logout-btn" data-a="python-try-again">TRY AGAIN</button>
         </div>
       `;
+
+      feedback.scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+      });
+    }
     }
   }
-}
 
 if (a === "back") {
   goBack();
