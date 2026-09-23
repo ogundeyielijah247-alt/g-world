@@ -676,34 +676,34 @@ function render() {
       <section class="doors">
         <div class="grid">
 
-         <button class="answer-option" data-a="python-answer-wrong">
+         <article data-a="python-answer-wrong">
   <h3>A</h3>
   <p>
     A type of computer hardware.
   </p>
-</button>
+</article>
 
-<button type="button" class="answer-option" data-a="python-answer-correct">
+<article data-a="python-answer-correct">
   <h3>B</h3>
   <p>
     A programming language used to give instructions
     to a computer.
   </p>
-</button>
+</article>
 
-<button class="answer-option" data-a="python-answer-wrong">
+<article data-a="python-answer-wrong">
   <h3>C</h3>
   <p>
     A social media platform.
   </p>
-</button>
+</article>
 
-<button class="answer-option" data-a="python-answer-wrong">
+<article data-a="python-answer-wrong">
   <h3>D</h3>
   <p>
     An operating system.
   </p>
-</button>
+</article>
 </div>
       </section>
       
