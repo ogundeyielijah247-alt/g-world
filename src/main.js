@@ -704,6 +704,8 @@ function render() {
     An operating system.
   </p>
 </article>
+
+<div id="python-feedback" class="python-feedback"></div>
 </div>
       </section>
       
@@ -757,12 +759,37 @@ if (a === "python-practice") {
 }
 console.log("Python answer click detected:", a);
   
-if (a === "python-answer-correct") {
-  alert("Correct! Python is a programming language used to give instructions to a computer.");
-}
+  if (a === "python-answer-correct" || a === "python-answer-wrong") {
+  const feedback = document.querySelector("#python-feedback");
 
-if (a === "python-answer-wrong") {
-  alert("Not quite. Let's look at it again. Python is a programming language.");
+  if (feedback) {
+    if (a === "python-answer-correct") {
+      feedback.innerHTML = `
+        <div class="feedback-card">
+          <h3>✓ Correct!</h3>
+          <p>Well done.</p>
+          <p>
+            Python is a programming language used to give
+            instructions to a computer.
+          </p>
+          <button type="button" class="logout-btn">CONTINUE →</button>
+        </div>
+      `;
+    } else {
+      feedback.innerHTML = `
+        <div class="feedback-card">
+          <h3>↻ Not quite</h3>
+          <p>That's not the correct answer.</p>
+          <p>Let's look at it again.</p>
+          <p>
+            Python is a programming language used to give
+            instructions to a computer.
+          </p>
+          <button type="button" class="logout-btn">TRY AGAIN</button>
+        </div>
+      `;
+    }
+  }
 }
 
 if (a === "back") {
