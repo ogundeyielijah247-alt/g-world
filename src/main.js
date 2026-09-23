@@ -677,23 +677,26 @@ if (a === "back") {
   goBack();
 }
 
-  if (a === "logout") {
-    localStorage.removeItem("gworld");
-    state.member = null;
-    state.error = "";
-    state.loading = false;
-    state.screen = "entry";
-    render();
-  }
+if (a === "logout") {
+  localStorage.removeItem("gworld");
+  state.member = null;
+  state.error = "";
+  state.loading = false;
+  state.history = [];
+  state.screen = "entry";
+  render();
+}
 
   if (a === "reset") {
-    localStorage.removeItem("gworld");
-    state.member = null;
-    state.error = "";
-    state.screen = "splash";
-    render();
-    startIntro();
-  }
+  localStorage.removeItem("gworld");
+  state.member = null;
+  state.error = "";
+  state.loading = false;
+  state.history = [];
+  state.screen = "splash";
+  render();
+  startIntro();
+}
 });
 
 document.addEventListener("submit", async e => {
