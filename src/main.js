@@ -12,7 +12,11 @@ const state = {
 };
 
 function goTo(screen) {
-  if (state.screen !== screen) {
+  if (state.screen === screen) return;
+
+  const excludedScreens = ["splash", "entry", "card"];
+
+  if (!excludedScreens.includes(state.screen)) {
     state.history.push(state.screen);
   }
 
@@ -24,6 +28,7 @@ function goBack() {
   if (!state.history.length) return;
 
   const previousScreen = state.history.pop();
+
   state.screen = previousScreen;
   render();
 }
