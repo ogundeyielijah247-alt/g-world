@@ -520,14 +520,14 @@ function render() {
               </p>
             </article>
 
-            <article>
-              <small>02</small>
-              <h3>Python Basics</h3>
-              <p>
-                Learn variables, data types, operators and basic Python
-                instructions.
-              </p>
-            </article>
+            <article data-a="python-lesson-2">
+  <small>02</small>
+  <h3>Python Basics</h3>
+  <p>
+    Learn variables, data types, operators and basic Python
+    instructions.
+  </p>
+</article>
 
             <article>
               <small>03</small>
@@ -838,9 +838,177 @@ if (a === "python-course") {
 if (a === "python-intro") {
   goTo("python-intro");
 }
+if (state.screen === "python-lesson-2") {
+    app.innerHTML = `
+      <main class="home">
+        ${backButton()}
 
+        <nav>
+          <div class="mini">
+            <b>G</b> G WORLD
+          </div>
+
+          <div class="nav-user">
+            <span>${esc(state.member?.name)}</span>
+            <button class="logout-btn" data-a="logout">LOG OUT</button>
+          </div>
+        </nav>
+
+        <section class="hero">
+          <div class="eyebrow">PYTHON FOUNDATIONS · LESSON 2</div>
+
+          <h1>Python Basics</h1>
+
+          <p>
+            Now that you understand what Python is,
+            let's learn some of the basic building blocks
+            used when writing Python programs.
+          </p>
+        </section>
+
+        <section class="continue">
+          <div>
+            <div class="eyebrow">KNOW</div>
+
+            <h2>What are Python instructions?</h2>
+
+            <p>
+              Python programs are made up of instructions.
+              Each instruction tells the computer to perform
+              something.
+            </p>
+
+            <p>
+              For example, we can tell Python to display
+              a message on the screen.
+            </p>
+          </div>
+        </section>
+
+        <section class="doors">
+          <h2>Your First Python Instruction</h2>
+
+          <div class="grid">
+            <article>
+              <small>01</small>
+              <h3>print()</h3>
+              <p>
+                The print() function tells Python to display
+                information on the screen.
+              </p>
+            </article>
+
+            <article>
+              <small>02</small>
+              <h3>Text</h3>
+              <p>
+                Text can be placed inside quotation marks
+                when we want Python to display words.
+              </p>
+            </article>
+
+            <article>
+              <small>03</small>
+              <h3>Example</h3>
+              <p>
+                print("Hello") tells Python to display
+                the word Hello.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="continue">
+          <div>
+            <div class="eyebrow">UNDERSTAND</div>
+
+            <h2>Think of print() as speaking</h2>
+
+            <p>
+              Imagine you are asking a computer to speak
+              something out loud.
+            </p>
+
+            <p>
+              When you write:
+            </p>
+
+            <p>
+              <strong>print("Hello")</strong>
+            </p>
+
+            <p>
+              you are telling Python:
+              "Show the word Hello on the screen."
+            </p>
+          </div>
+        </section>
+
+        <section class="doors">
+          <h2>Three Things to Remember</h2>
+
+          <div class="grid">
+            <article>
+              <small>01</small>
+              <h3>Instructions</h3>
+              <p>
+                Python programs contain instructions
+                for the computer.
+              </p>
+            </article>
+
+            <article>
+              <small>02</small>
+              <h3>print()</h3>
+              <p>
+                print() can be used to display information
+                on the screen.
+              </p>
+            </article>
+
+            <article>
+              <small>03</small>
+              <h3>Quotation Marks</h3>
+              <p>
+                Text such as Hello can be written inside
+                quotation marks.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="continue">
+          <div>
+            <div class="eyebrow">PRACTICE</div>
+
+            <h2>Ready to test your understanding?</h2>
+
+            <p>
+              Let's check whether you understand what
+              the print() instruction does.
+            </p>
+          </div>
+
+          <button class="primary" data-a="python-lesson-2-practice">
+            START PRACTICE →
+          </button>
+        </section>
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+      </main>`;
+  }
+  
 if (a === "python-practice") {
   goTo("python-practice");
+}
+  if (a === "python-lesson-2") {
+  goTo("python-lesson-2");
+}
+  if (a === "python-lesson-2-practice") {
+  alert("LESSON 2 PRACTICE BUTTON CLICKED");
+  goTo("python-lesson-2-practice");
 }
 
   if (a === "python-continue") {
