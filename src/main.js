@@ -633,8 +633,8 @@ function render() {
         </footer>
       </main>`;
   }
-}
-if (state.screen === "python-practice") {
+
+  if (state.screen === "python-practice") {
   app.innerHTML = `
     <main class="home">
       ${backButton()}
