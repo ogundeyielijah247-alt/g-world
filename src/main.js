@@ -529,13 +529,14 @@ function render() {
   </p>
 </article>
 
-            <article>
-              <small>03</small>
-              <h3>Practice</h3>
-              <p>
-                Test what you have learned with simple exercises.
-              </p>
-            </article>
+            <article data-a="python-lesson-3">
+  <small>03</small>
+  <h3>Variables</h3>
+  <p>
+    Learn how Python stores information using variables
+    and values.
+  </p>
+</article>
           </div>
         </section>
 
@@ -960,6 +961,259 @@ if (state.screen === "python-lesson-2") {
       </footer>
     </main>`;
 }
+  if (state.screen === "python-lesson-3") {
+  app.innerHTML = `
+    <main class="home">
+      ${backButton()}
+
+      <nav>
+        <div class="mini">
+          <b>G</b> G WORLD
+        </div>
+
+        <div class="nav-user">
+          <span>${esc(state.member?.name)}</span>
+          <button class="logout-btn" data-a="logout">LOG OUT</button>
+        </div>
+      </nav>
+
+      <section class="hero">
+        <div class="eyebrow">PYTHON FOUNDATIONS · LESSON 3</div>
+
+        <h1>Variables</h1>
+
+        <p>
+          Now let's learn how Python stores information
+          so we can use it later in our program.
+        </p>
+      </section>
+
+      <section class="continue">
+        <div>
+          <div class="eyebrow">KNOW</div>
+
+          <h2>What is a variable?</h2>
+
+          <p>
+            A variable is a name we give to a piece of
+            information that we want Python to remember.
+          </p>
+
+          <p>
+            Think of a variable like a labelled box.
+            The label helps us know what is inside the box.
+          </p>
+        </div>
+      </section>
+
+      <section class="doors">
+        <h2>Your First Variable</h2>
+
+        <div class="grid">
+
+          <article>
+            <small>01</small>
+            <h3>Name</h3>
+            <p>
+              We give the information a name so we can
+              identify it later.
+            </p>
+          </article>
+
+          <article>
+            <small>02</small>
+            <h3>Value</h3>
+            <p>
+              The value is the information stored
+              inside the variable.
+            </p>
+          </article>
+
+          <article>
+            <small>03</small>
+            <h3>Example</h3>
+            <p>
+              name = "Elijah" stores the word Elijah
+              inside a variable called name.
+            </p>
+          </article>
+
+        </div>
+      </section>
+
+      <section class="continue">
+        <div>
+          <div class="eyebrow">UNDERSTAND</div>
+
+          <h2>Think of a variable as a labelled box</h2>
+
+          <p>
+            Imagine a box with the label
+            <strong>name</strong>.
+          </p>
+
+          <p>
+            Inside the box we place:
+          </p>
+
+          <p>
+            <strong>"Elijah"</strong>
+          </p>
+
+          <p>
+            In Python, we can write:
+          </p>
+
+          <p>
+            <strong>name = "Elijah"</strong>
+          </p>
+
+          <p>
+            Python now remembers that the variable
+            <strong>name</strong> contains
+            <strong>"Elijah"</strong>.
+          </p>
+        </div>
+      </section>
+
+      <section class="doors">
+        <h2>Three Things to Remember</h2>
+
+        <div class="grid">
+
+          <article>
+            <small>01</small>
+            <h3>Name</h3>
+            <p>
+              A variable needs a name so we can
+              identify it.
+            </p>
+          </article>
+
+          <article>
+            <small>02</small>
+            <h3>Value</h3>
+            <p>
+              A variable stores information called
+              a value.
+            </p>
+          </article>
+
+          <article>
+            <small>03</small>
+            <h3>=</h3>
+            <p>
+              The equals sign is used to give a value
+              to a variable.
+            </p>
+          </article>
+
+        </div>
+      </section>
+
+      <section class="continue">
+        <div>
+          <div class="eyebrow">PRACTICE</div>
+
+          <h2>Ready to test your understanding?</h2>
+
+          <p>
+            Let's check whether you understand
+            what a variable does in Python.
+          </p>
+        </div>
+
+        <button class="primary" data-a="python-lesson-3-practice">
+          START PRACTICE →
+        </button>
+      </section>
+
+      <footer>
+        G WORLD · Discover What You Need to Know.
+      </footer>
+    </main>`;
+}
+  if (state.screen === "python-lesson-3-practice") {
+  app.innerHTML = `
+    <main class="home">
+      ${backButton()}
+
+      <nav>
+        <div class="mini">
+          <b>G</b> G WORLD
+        </div>
+
+        <div class="nav-user">
+          <span>${esc(state.member?.name)}</span>
+          <button class="logout-btn" data-a="logout">LOG OUT</button>
+        </div>
+      </nav>
+
+      <section class="hero">
+        <div class="eyebrow">PYTHON FOUNDATIONS · LESSON 3 PRACTICE</div>
+
+        <h1>Let's test what you learned.</h1>
+
+        <p>
+          Think carefully about what variables do
+          in Python.
+        </p>
+      </section>
+
+      <section class="continue">
+        <div>
+          <div class="eyebrow">QUESTION 1</div>
+
+          <h2>What is a variable?</h2>
+
+          <p>
+            Choose the answer that best explains
+            what a variable does in Python.
+          </p>
+        </div>
+      </section>
+
+      <section class="doors">
+        <div class="grid">
+
+          <article data-a="python-lesson-3-answer-wrong">
+            <h3>A</h3>
+            <p>
+              A computer screen.
+            </p>
+          </article>
+
+          <article data-a="python-lesson-3-answer-correct">
+            <h3>B</h3>
+            <p>
+              A named place used to store information.
+            </p>
+          </article>
+
+          <article data-a="python-lesson-3-answer-wrong">
+            <h3>C</h3>
+            <p>
+              A type of computer.
+            </p>
+          </article>
+
+          <article data-a="python-lesson-3-answer-wrong">
+            <h3>D</h3>
+            <p>
+              A button used to start Python.
+            </p>
+          </article>
+
+        </div>
+      </section>
+
+      <div id="python-lesson-3-feedback" class="python-feedback"></div>
+
+      <footer>
+        G WORLD · Discover What You Need to Know.
+      </footer>
+    </main>`;
+}
   if (state.screen === "python-practice") {
   app.innerHTML = `
     <main class="home">
@@ -1089,6 +1343,12 @@ if (a === "python-practice") {
   if (a === "python-lesson-2-practice") {
   goTo("python-lesson-2-practice");
 }
+  if (a === "python-lesson-3") {
+  goTo("python-lesson-3");
+}
+  if (a === "python-lesson-3-practice") {
+  goTo("python-lesson-3-practice");
+}
 
 if (
   a === "python-lesson-2-answer-correct" ||
@@ -1153,6 +1413,72 @@ if (
 }
 
 if (a === "python-lesson-2-continue") {
+  goTo("python-course");
+}
+
+if (
+  a === "python-lesson-3-answer-correct" ||
+  a === "python-lesson-3-answer-wrong"
+) {
+  const feedback = document.querySelector(
+    "#python-lesson-3-feedback"
+  );
+
+  if (feedback) {
+    if (a === "python-lesson-3-answer-correct") {
+      feedback.innerHTML = `
+        <div class="feedback-card">
+          <h3>✓ Correct!</h3>
+
+          <p>Well done.</p>
+
+          <p>
+            A variable is a named place used to store
+            information so Python can use it later.
+          </p>
+
+          <button
+            type="button"
+            class="logout-btn"
+            data-a="python-lesson-3-continue"
+          >
+            CONTINUE →
+          </button>
+        </div>
+      `;
+    } else {
+      feedback.innerHTML = `
+        <div class="feedback-card">
+          <h3>↻ Not quite</h3>
+
+          <p>
+            That's not the correct answer.
+          </p>
+
+          <p>
+            Remember: a variable is a named place
+            used to store information.
+          </p>
+
+          <button
+            type="button"
+            class="logout-btn"
+            data-a="python-lesson-3-practice"
+          >
+            TRY AGAIN
+          </button>
+        </div>
+      `;
+    }
+
+    feedback.scrollIntoView({
+      behavior: "smooth",
+      block: "center"
+    });
+  }
+}
+
+if (a === "python-lesson-3-continue") {
   goTo("python-course");
 }
 
