@@ -810,3 +810,22 @@ button {
   }
 }
 
+.feedback-card {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+}
+
+.feedback-card h3 {
+  margin: 0 0 10px;
+}
+
+.feedback-card p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+
+
