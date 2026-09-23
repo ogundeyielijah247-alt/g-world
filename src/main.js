@@ -23,16 +23,13 @@ function goTo(screen) {
   state.screen = screen;
   render();
 
-  state.screen = screen;
-render();
-
-requestAnimationFrame(() => {
-  window.scrollTo({
-    top: 0,
-    left: 0,
-    behavior: "auto"
+  requestAnimationFrame(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "auto"
+    });
   });
-});
 }
 
 function goBack() {
@@ -847,6 +844,7 @@ if (a === "python-practice") {
 }
 
   if (a === "python-continue") {
+  console.log("CONTINUE BUTTON CLICKED");
   goTo("python-course");
 }
   if (a === "python-try-again") {
