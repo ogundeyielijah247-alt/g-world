@@ -479,7 +479,7 @@ function render() {
 
           <div class="nav-user">
             <span>${esc(state.member?.name)}</span>
-            <button class="logout-btn" data-a="courses">BACK TO COURSES</button>
+            <button class="logout-btn" data-a="back">BACK TO COURSES</button>
           </div>
         </nav>
 
