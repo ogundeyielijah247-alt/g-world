@@ -712,6 +712,7 @@ function render() {
         G WORLD · Discover What You Need to Know.
       </footer>
     </main>`;
+  }
 }
 
 document.addEventListener("click", e => {
