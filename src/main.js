@@ -549,106 +549,178 @@ function render() {
   }
 
   if (state.screen === "python-intro") {
-    app.innerHTML = `
-      <main class="home">
+  app.innerHTML = `
+    <main class="home">
       ${backButton()}
-        <nav>
-          <div class="mini">
-            <b>G</b> G WORLD
-          </div>
 
-          <div class="nav-user">
-            <span>${esc(state.member?.name)}</span>
-            <button class="logout-btn" data-a="logout">LOG OUT</button>
-          </div>
-        </nav>
+      <nav>
+        <div class="mini">
+          <b>G</b> G WORLD
+        </div>
 
-        <section class="hero">
-          <div class="eyebrow">PYTHON FOUNDATIONS · LESSON 1</div>
+        <div class="nav-user">
+          <span>${esc(state.member?.name)}</span>
+          <button class="logout-btn" data-a="logout">LOG OUT</button>
+        </div>
+      </nav>
 
-          <h1>Introduction to Python</h1>
+      <section class="hero">
+        <div class="eyebrow">PYTHON FOUNDATIONS · LESSON 1</div>
+
+        <h1>Introduction to Python</h1>
+
+        <p>
+          Before writing code, let's understand what Python is,
+          where it is used, and why people use it.
+        </p>
+      </section>
+
+      <section class="continue">
+        <div>
+          <div class="eyebrow">KNOW</div>
+
+          <h2>What is Python?</h2>
 
           <p>
-            Before writing code, let's understand what Python is,
-            where it is used, and why people use it.
+            Python is a programming language that allows people
+            to give instructions to a computer in a way that is
+            relatively easy to read and understand.
           </p>
-        </section>
 
-        <section class="continue">
-          <div>
-            <div class="eyebrow">KNOW</div>
+          <p>
+            A programming language gives us a way to communicate
+            instructions to a computer.
+          </p>
 
-            <h2>What is Python?</h2>
+          <p>
+            Python is one of the programming languages people use
+            to solve problems, automate tasks, analyse information,
+            build software and create technology.
+          </p>
+        </div>
+      </section>
 
+      <section class="doors">
+        <h2>Where is Python used?</h2>
+
+        <div class="grid">
+          <article>
+            <small>01</small>
+            <h3>Automation</h3>
             <p>
-              Python is a programming language that allows people
-              to give instructions to a computer in a way that is
-              relatively easy to read and understand.
+              Python can be used to automate repetitive tasks,
+              helping people complete work more efficiently.
             </p>
+          </article>
 
+          <article>
+            <small>02</small>
+            <h3>Data</h3>
             <p>
-              It is used for many things, including automation,
-              data analysis, web development, artificial intelligence,
-              research and software development.
+              Python can help people work with, analyse and
+              understand large amounts of information.
             </p>
-          </div>
-        </section>
+          </article>
 
-        <section class="doors">
-          <h2>Understand Before You Practise</h2>
-
-          <div class="grid">
-            <article>
-              <small>01</small>
-              <h3>Python is a language</h3>
-              <p>
-                Just as people use languages to communicate,
-                programmers use Python to communicate instructions
-                to computers.
-              </p>
-            </article>
-
-            <article>
-              <small>02</small>
-              <h3>Python is readable</h3>
-              <p>
-                Python was designed with readability in mind,
-                making it a useful language for beginners.
-              </p>
-            </article>
-
-            <article>
-              <small>03</small>
-              <h3>Python can build things</h3>
-              <p>
-                You can use Python to solve problems, automate tasks,
-                analyse information and build useful programs.
-              </p>
-            </article>
-          </div>
-        </section>
-
-        <section class="continue">
-          <div>
-            <div class="eyebrow">PRACTICE</div>
-            <h2>Think about this</h2>
-
+          <article>
+            <small>03</small>
+            <h3>Artificial Intelligence</h3>
             <p>
-              If Python is a language used to communicate with a
-              computer, what do you think a Python program is?
+              Python is widely used in artificial intelligence
+              and machine learning projects.
             </p>
-          </div>
+          </article>
 
-          <button class="primary" data-a="python-practice">
-  CONTINUE
-</button>
-        </section>
+          <article>
+            <small>04</small>
+            <h3>Software Development</h3>
+            <p>
+              Python can be used to create useful programs,
+              applications and other software systems.
+            </p>
+          </article>
+        </div>
+      </section>
 
-        <footer>
-          G WORLD · Discover What You Need to Know.
-        </footer>
-      </main>`;
-  }
+      <section class="continue">
+        <div>
+          <div class="eyebrow">UNDERSTAND</div>
+
+          <h2>Think of Python as a language</h2>
+
+          <p>
+            Imagine you want a person to perform a task.
+            You need to communicate what you want them to do.
+          </p>
+
+          <p>
+            Computers also need instructions. Python gives us
+            a way to write those instructions in a form that
+            people can read and computers can execute.
+          </p>
+
+          <p>
+            So, when you write Python code, you are giving
+            instructions to a computer.
+          </p>
+        </div>
+      </section>
+
+      <section class="doors">
+        <h2>Three Things to Remember</h2>
+
+        <div class="grid">
+          <article>
+            <small>01</small>
+            <h3>Python is a programming language</h3>
+            <p>
+              It provides a way for humans to give instructions
+              to computers.
+            </p>
+          </article>
+
+          <article>
+            <small>02</small>
+            <h3>Python is readable</h3>
+            <p>
+              Its syntax was designed to be relatively clear
+              and readable, which makes it approachable for beginners.
+            </p>
+          </article>
+
+          <article>
+            <small>03</small>
+            <h3>Python solves problems</h3>
+            <p>
+              Python can be used to automate work, analyse data,
+              build software and create technology.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="continue">
+        <div>
+          <div class="eyebrow">PRACTICE</div>
+
+          <h2>Ready to test your understanding?</h2>
+
+          <p>
+            Before we continue, let's see whether you understand
+            the most important idea from this lesson.
+          </p>
+        </div>
+
+        <button class="primary" data-a="python-practice">
+          START PRACTICE →
+        </button>
+      </section>
+
+      <footer>
+        G WORLD · Discover What You Need to Know.
+      </footer>
+    </main>`;
+}
 
   if (state.screen === "python-practice") {
   app.innerHTML = `
@@ -774,6 +846,9 @@ if (a === "python-practice") {
   goTo("python-practice");
 }
 
+  if (a === "python-continue") {
+  goTo("python-course");
+}
   if (a === "python-try-again") {
   const feedback = document.querySelector("#python-feedback");
 
@@ -796,7 +871,9 @@ console.log("Python answer click detected:", a);
             Python is a programming language used to give
             instructions to a computer.
           </p>
-          <button type="button" class="logout-btn">CONTINUE →</button>
+          <button type="button" class="logout-btn" data-a="python-continue">
+  CONTINUE →
+</button>
         </div>
       `;
 
