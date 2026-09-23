@@ -757,6 +757,14 @@ if (a === "python-intro") {
 if (a === "python-practice") {
   goTo("python-practice");
 }
+
+  if (a === "python-try-again") {
+  const feedback = document.querySelector("#python-feedback");
+
+  if (feedback) {
+    feedback.innerHTML = "";
+  }
+}
 console.log("Python answer click detected:", a);
   
   if (a === "python-answer-correct" || a === "python-answer-wrong") {
@@ -785,7 +793,7 @@ console.log("Python answer click detected:", a);
             Python is a programming language used to give
             instructions to a computer.
           </p>
-          <button type="button" class="logout-btn">TRY AGAIN</button>
+          <button type="button" class="logout-btn" data-a="python-try-again">TRY AGAIN</button>
         </div>
       `;
     }
