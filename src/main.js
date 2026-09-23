@@ -755,7 +755,8 @@ if (a === "python-intro") {
 if (a === "python-practice") {
   goTo("python-practice");
 }
-
+console.log("Python answer click detected:", a);
+  
 if (a === "python-answer-correct") {
   alert("Correct! Python is a programming language used to give instructions to a computer.");
 }
