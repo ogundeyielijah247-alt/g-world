@@ -78,6 +78,11 @@ async function generateMemberQR() {
 }
 
 function render() {
+  window.scrollTo({
+  top: 0,
+  left: 0,
+  behavior: "auto"
+});
 
   function backButton() {
     if (!state.history.length) return "";
