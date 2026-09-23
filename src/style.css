@@ -815,7 +815,7 @@ button {
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 12px;
   padding: 24px;
-  background: #f5f7f9;
+  background: rgba(255, 255, 255, 0.04);
   color: #111827;
   text-align: center;
   cursor: pointer;
