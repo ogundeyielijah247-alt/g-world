@@ -676,34 +676,34 @@ function render() {
       <section class="doors">
         <div class="grid">
 
-          <article>
-            <h3>A</h3>
-            <p>
-              A type of computer hardware.
-            </p>
-          </article>
+          <article data-a="python-answer-wrong">
+  <h3>A</h3>
+  <p>
+    A type of computer hardware.
+  </p>
+</article>
 
-          <article>
-            <h3>B</h3>
-            <p>
-              A programming language used to give instructions
-              to a computer.
-            </p>
-          </article>
+<article data-a="python-answer-correct">
+  <h3>B</h3>
+  <p>
+    A programming language used to give instructions
+    to a computer.
+  </p>
+</article>
 
-          <article>
-            <h3>C</h3>
-            <p>
-              A social media platform.
-            </p>
-          </article>
+<article data-a="python-answer-wrong">
+  <h3>C</h3>
+  <p>
+    A social media platform.
+  </p>
+</article>
 
-          <article>
-            <h3>D</h3>
-            <p>
-              An operating system.
-            </p>
-          </article>
+<article data-a="python-answer-wrong">
+  <h3>D</h3>
+  <p>
+    An operating system.
+  </p>
+</article>
 
         </div>
       </section>
@@ -755,6 +755,14 @@ if (a === "python-intro") {
 
 if (a === "python-practice") {
   goTo("python-practice");
+}
+
+if (a === "python-answer-correct") {
+  alert("Correct! Python is a programming language used to give instructions to a computer.");
+}
+
+if (a === "python-answer-wrong") {
+  alert("Not quite. Let's look at it again. Python is a programming language.");
 }
 
 if (a === "back") {
