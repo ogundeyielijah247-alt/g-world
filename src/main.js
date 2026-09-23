@@ -623,9 +623,9 @@ function render() {
             </p>
           </div>
 
-          <button class="primary">
-            CONTINUE
-          </button>
+          <button class="primary" data-a="python-practice">
+  CONTINUE
+</button>
         </section>
 
         <footer>
@@ -671,6 +671,10 @@ if (a === "python-course") {
 
 if (a === "python-intro") {
   goTo("python-intro");
+}
+
+if (a === "python-practice") {
+  goTo("python-practice");
 }
 
 if (a === "back") {
