@@ -33,6 +33,15 @@ function goBack() {
   render();
 }
 
+function goBack() {
+  if (!state.history.length) return;
+
+  const previousScreen = state.history.pop();
+
+  state.screen = previousScreen;
+  render();
+}
+
 // Set VITE_API_BASE_URL when the frontend and API are deployed separately.
 // Leave it empty when the API is served from the same origin.
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
