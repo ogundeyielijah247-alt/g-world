@@ -634,6 +634,85 @@ function render() {
       </main>`;
   }
 }
+if (state.screen === "python-practice") {
+  app.innerHTML = `
+    <main class="home">
+      ${backButton()}
+
+      <nav>
+        <div class="mini">
+          <b>G</b> G WORLD
+        </div>
+
+        <div class="nav-user">
+          <span>${esc(state.member?.name)}</span>
+          <button class="logout-btn" data-a="logout">LOG OUT</button>
+        </div>
+      </nav>
+
+      <section class="hero">
+        <div class="eyebrow">PYTHON FOUNDATIONS · PRACTICE</div>
+
+        <h1>Let's see what you understand.</h1>
+
+        <p>
+          Take a moment to think about what you have just learned.
+          There is no pressure to get it right the first time.
+        </p>
+      </section>
+
+      <section class="continue">
+        <div>
+          <div class="eyebrow">QUESTION 1</div>
+
+          <h2>What is Python?</h2>
+
+          <p>
+            Choose the answer that best explains what Python is.
+          </p>
+        </div>
+      </section>
+
+      <section class="doors">
+        <div class="grid">
+
+          <article>
+            <h3>A</h3>
+            <p>
+              A type of computer hardware.
+            </p>
+          </article>
+
+          <article>
+            <h3>B</h3>
+            <p>
+              A programming language used to give instructions
+              to a computer.
+            </p>
+          </article>
+
+          <article>
+            <h3>C</h3>
+            <p>
+              A social media platform.
+            </p>
+          </article>
+
+          <article>
+            <h3>D</h3>
+            <p>
+              An operating system.
+            </p>
+          </article>
+
+        </div>
+      </section>
+
+      <footer>
+        G WORLD · Discover What You Need to Know.
+      </footer>
+    </main>`;
+}
 
 document.addEventListener("click", e => {
   const a = e.target.closest("[data-a]")?.dataset.a;
