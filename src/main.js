@@ -683,7 +683,7 @@ function render() {
   </p>
 </button>
 
-<button type="button" class="answer-option" data-a="python-answer-correct" onclick="alert('B button works')">
+<button type="button" class="answer-option" data-a="python-answer-correct">
   <h3>B</h3>
   <p>
     A programming language used to give instructions
