@@ -173,15 +173,21 @@ function renderLessonQuiz(lessonId) {
 
         <div class="quiz-options">
           ${question.options.map((option, index) => `
-            <button
-              type="button"
-              class="quiz-option"
-              data-a="lesson-quiz-answer"
-              data-option="${index}"
-            >
-              ${esc(option)}
-            </button>
-          `).join("")}
+  <button
+    type="button"
+    class="quiz-option"
+    data-a="lesson-quiz-answer"
+    data-option="${index}"
+  >
+    <span class="quiz-option-letter">
+      ${String.fromCharCode(65 + index)}
+    </span>
+
+    <span class="quiz-option-text">
+      ${esc(option)}
+    </span>
+  </button>
+`).join("")}
         </div>
 
         <div id="lesson-quiz-feedback"></div>
