@@ -168,30 +168,28 @@ function renderLessonQuiz(lessonId) {
         </p>
       </section>
 
-      <section class="lesson-card">
-        <h2>${esc(question.question)}</h2>
+      <section class="doors">
+  <h2>${esc(question.question)}</h2>
 
-        <div class="quiz-options">
-          ${question.options.map((option, index) => `
-  <button
-    type="button"
-    class="quiz-option"
-    data-a="lesson-quiz-answer"
-    data-option="${index}"
-  >
-    <span class="quiz-option-letter">
-      ${String.fromCharCode(65 + index)}
-    </span>
+  <div class="grid">
 
-    <span class="quiz-option-text">
-      ${esc(option)}
-    </span>
-  </button>
-`).join("")}
-        </div>
+    ${question.options.map((option, index) => `
+      <article
+        data-a="lesson-quiz-answer"
+        data-option="${index}"
+      >
+        <small>${String.fromCharCode(65 + index)}</small>
 
-        <div id="lesson-quiz-feedback"></div>
-      </section>
+        <h3>
+          ${esc(option)}
+        </h3>
+      </article>
+    `).join("")}
+
+  </div>
+
+  <div id="lesson-quiz-feedback"></div>
+</section>
     </main>
   `;
 }
