@@ -82,6 +82,63 @@ const esc = s =>
     '"': "&quot;",
     "'": "&#039;"
   }[c]));
+const lessonData = {
+  "python-lesson-3": {
+    courseId: "python-foundations",
+    lessonNumber: 3,
+    title: "Variables",
+
+    learn: {
+      introduction:
+        "A variable is a named place where Python stores information so we can use it later.",
+
+      examples: [
+        {
+          code: 'name = "Elijah"',
+          explanation:
+            'The variable name stores the text "Elijah".'
+        },
+        {
+          code: "age = 25",
+          explanation:
+            "The variable age stores the number 25."
+        }
+      ]
+    },
+
+    watch: {
+      title: "Understanding Python Variables",
+      videoUrl: ""
+    },
+
+    practice: {
+      title: "Create Your First Variables",
+      instruction:
+        'Create a variable called name and store your name inside it.'
+    },
+
+    quiz: {
+      questionCount: 5
+    },
+
+    apply: {
+      title: "Use Variables in a Small Program",
+      instruction:
+        "Create variables for a person's name and age, then use them together in a simple Python program."
+    },
+
+    build: {
+      title: "Mini Variable Project",
+      instruction:
+        "Build a small Python program that stores and displays basic information about a person."
+    },
+
+    verify: {
+      required: true
+    }
+  }
+};
+
 const lessonQuizData = {
   "python-lesson-3": {
     title: "Variables",
