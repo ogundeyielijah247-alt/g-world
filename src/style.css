@@ -853,3 +853,53 @@ button {
   font-weight: 800;
   margin-bottom: 10px;
 }
+/* =========================================================
+   G WORLD BACK BUTTON
+   ========================================================= */
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 7% 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #9eb2be;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.back-btn span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #16b9a655;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #071923, #0b2733);
+  color: #55d9c5;
+  font-size: 17px;
+  line-height: 1;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.back-btn:hover {
+  color: #fff;
+  transform: translateX(-2px);
+}
+
+.back-btn:hover span {
+  border-color: #16b9a6;
+  background: linear-gradient(135deg, #0a2430, #0d3440);
+  color: #fff;
+}
+
+.back-btn:active {
+  transform: translateX(0);
+}
