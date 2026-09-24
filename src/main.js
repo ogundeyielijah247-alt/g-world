@@ -200,17 +200,12 @@ function renderLessonQuiz(lessonId) {
 
           ${question.options.map((option, index) => `
             <article
-              data-a="lesson-quiz-answer"
-              data-option="${index}"
-            >
-              <small class="quiz-option-letter">
-                ${String.fromCharCode(65 + index)}
-              </small>
-
-              <h3>
-                ${esc(option)}
-              </h3>
-            </article>
+  data-a="lesson-quiz-answer"
+  data-option="${index}"
+>
+  <h3>${String.fromCharCode(65 + index)}</h3>
+  <p>${esc(option)}</p>
+</article>
           `).join("")}
 
         </div>
