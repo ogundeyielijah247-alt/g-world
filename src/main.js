@@ -3,6 +3,11 @@ import QRCode from "qrcode";
 
 const app = document.querySelector("#app");
 
+window.history.replaceState(
+  { gworld: true, screen: "splash" },
+  "",
+  window.location.href
+);
 const state = {
   screen: "splash",
   history: [],
