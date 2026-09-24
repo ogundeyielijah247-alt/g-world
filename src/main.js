@@ -63,69 +63,69 @@ const lessonQuizData = {
     title: "Variables",
     questions: [
       {
-        question: "What is a variable?",
-        options: [
-          "A computer screen.",
-          "A named place used to store information.",
-          "A type of computer.",
-          "A button used to start Python."
-        ],
-        answer: 1,
-        explanation:
-          "A variable is a named place used to store information so Python can use it later."
-      },
+  question: "What is a variable?",
+  options: [
+    "A type of computer.",
+    "A named place used to store information.",
+    "A button used to start Python.",
+    "A computer screen."
+  ],
+  answer: 1,
+  explanation:
+    "A variable is a named place used to store information so Python can use it later."
+},
 
-      {
-        question: "Which part of this code is the variable name?",
-        options: [
-          'name = "Elijah"',
-          'Elijah',
-          "name",
-          "="
-        ],
-        answer: 2,
-        explanation:
-          "In name = \"Elijah\", the word name is the variable name."
-      },
+{
+  question: "Which part of this code is the variable name?",
+  options: [
+    "Elijah",
+    "=",
+    "name",
+    'name = "Elijah"'
+  ],
+  answer: 2,
+  explanation:
+    'In name = "Elijah", the word name is the variable name.'
+},
 
-      {
-        question: 'What value is stored in the variable name in this code: name = "Elijah"?',
-        options: [
-          "name",
-          "Elijah",
-          "=",
-          "Python"
-        ],
-        answer: 1,
-        explanation:
-          'The value stored in the variable name is the text "Elijah".'
-      },
+{
+  question: 'What value is stored in the variable name in this code: name = "Elijah"?',
+  options: [
+    "Python",
+    "=",
+    "name",
+    "Elijah"
+  ],
+  answer: 3,
+  explanation:
+    'The value stored in the variable name is the text "Elijah".'
+},
 
-      {
-        question: 'Which code correctly stores the name "Elijah" in a variable?',
-        options: [
-          'name = "Elijah"',
-          'name == "Elijah"',
-          'name : "Elijah"',
-          'name -> "Elijah"'
-        ],
-        answer: 0,
-        explanation:
-          'The equals sign is used to give a value to a variable, so name = "Elijah" is correct.'
-      },
+{
+  question: 'Which code correctly stores the name "Elijah" in a variable?',
+  options: [
+    'name = "Elijah"',
+    'name : "Elijah"',
+    'name -> "Elijah"',
+    'name == "Elijah"'
+  ],
+  answer: 0,
+  explanation:
+    'The equals sign is used to give a value to a variable, so name = "Elijah" is correct.'
+},
 
-      {
-        question: "Why are variables useful?",
-        options: [
-          "They make the computer screen brighter.",
-          "They allow Python to remember information that we can use later.",
-          "They turn Python into another language.",
-          "They automatically create a website."
-        ],
-        answer: 1,
-        explanation:
-          "Variables allow Python to store information so that the information can be used later in a program."
-      }
+{
+  question: "Why are variables useful?",
+  options: [
+    "They automatically create a website.",
+    "They make the computer screen brighter.",
+    "They allow Python to remember information that we can use later.",
+    "They turn Python into another language."
+  ],
+  answer: 2,
+  explanation:
+    "Variables allow Python to store information so that the information can be used later in a program."
+}
     ]
   }
 };
@@ -1563,6 +1563,118 @@ if (a === "python-lesson-2-continue") {
   goTo("python-course");
 }
 
+  if (a === "lesson-quiz-answer") {
+  const quiz = lessonQuizData[state.quiz.lessonId];
+  const question = quiz?.questions[state.quiz.questionIndex];
+
+  if (!quiz || !question) return;
+
+  const selectedOption = Number(
+    e.target.closest("[data-a='lesson-quiz-answer']")?.dataset.option
+  );
+
+  const feedback = document.querySelector("#lesson-quiz-feedback");
+
+  if (!feedback) return;
+
+  if (selectedOption === question.answer) {
+    state.quiz.score++;
+
+    feedback.innerHTML = `
+      <div class="feedback-card">
+        <h3>✓ Correct!</h3>
+
+        <p>Well done.</p>
+
+        <p>
+          ${esc(question.explanation)}
+        </p>
+
+        <button
+          type="button"
+          class="logout-btn"
+          data-a="lesson-quiz-next"
+        >
+          ${state.quiz.questionIndex === quiz.questions.length - 1
+            ? "FINISH QUIZ →"
+            : "NEXT QUESTION →"}
+        </button>
+      </div>
+    `;
+  } else {
+    feedback.innerHTML = `
+      <div class="feedback-card">
+        <h3>↻ Not quite</h3>
+
+        <p>That's not the correct answer.</p>
+
+        <p>
+          ${esc(question.explanation)}
+        </p>
+
+        <button
+          type="button"
+          class="logout-btn"
+          data-a="lesson-quiz-retry"
+        >
+          TRY AGAIN
+        </button>
+      </div>
+    `;
+  }
+    if (a === "lesson-quiz-next") {
+  const quiz = lessonQuizData[state.quiz.lessonId];
+
+  if (!quiz) return;
+
+  if (state.quiz.questionIndex < quiz.questions.length - 1) {
+    state.quiz.questionIndex++;
+
+    render();
+  } else {
+    const feedback = document.querySelector("#lesson-quiz-feedback");
+
+    if (feedback) {
+      feedback.innerHTML = `
+        <div class="feedback-card">
+          <h3>✓ Quiz Complete!</h3>
+
+          <p>
+            You scored ${state.quiz.score} out of ${quiz.questions.length}.
+          </p>
+
+          <p>
+            You have completed the Variables understanding check.
+          </p>
+
+          <button
+            type="button"
+            class="logout-btn"
+            data-a="python-course"
+          >
+            CONTINUE →
+          </button>
+        </div>
+      `;
+
+      feedback.scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+      });
+    }
+  }
+}
+
+if (a === "lesson-quiz-retry") {
+  render();
+}
+
+  feedback.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+}
+  
 if (
   a === "python-lesson-3-answer-correct" ||
   a === "python-lesson-3-answer-wrong"
