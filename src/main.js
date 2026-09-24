@@ -8,7 +8,12 @@ const state = {
   history: [],
   member: null,
   error: "",
-  loading: false
+  loading: false,
+  quiz: {
+    lessonId: null,
+    questionIndex: 0,
+    score: 0
+  }
 };
 
 function goTo(screen) {
@@ -53,6 +58,137 @@ const esc = s =>
     '"': "&quot;",
     "'": "&#039;"
   }[c]));
+const lessonQuizData = {
+  "python-lesson-3": {
+    title: "Variables",
+    questions: [
+      {
+        question: "What is a variable?",
+        options: [
+          "A computer screen.",
+          "A named place used to store information.",
+          "A type of computer.",
+          "A button used to start Python."
+        ],
+        answer: 1,
+        explanation:
+          "A variable is a named place used to store information so Python can use it later."
+      },
+
+      {
+        question: "Which part of this code is the variable name?",
+        options: [
+          'name = "Elijah"',
+          'Elijah',
+          "name",
+          "="
+        ],
+        answer: 2,
+        explanation:
+          "In name = \"Elijah\", the word name is the variable name."
+      },
+
+      {
+        question: 'What value is stored in the variable name in this code: name = "Elijah"?',
+        options: [
+          "name",
+          "Elijah",
+          "=",
+          "Python"
+        ],
+        answer: 1,
+        explanation:
+          'The value stored in the variable name is the text "Elijah".'
+      },
+
+      {
+        question: 'Which code correctly stores the name "Elijah" in a variable?',
+        options: [
+          'name = "Elijah"',
+          'name == "Elijah"',
+          'name : "Elijah"',
+          'name -> "Elijah"'
+        ],
+        answer: 0,
+        explanation:
+          'The equals sign is used to give a value to a variable, so name = "Elijah" is correct.'
+      },
+
+      {
+        question: "Why are variables useful?",
+        options: [
+          "They make the computer screen brighter.",
+          "They allow Python to remember information that we can use later.",
+          "They turn Python into another language.",
+          "They automatically create a website."
+        ],
+        answer: 1,
+        explanation:
+          "Variables allow Python to store information so that the information can be used later in a program."
+      }
+    ]
+  }
+};
+function renderLessonQuiz(lessonId) {
+  const quiz = lessonQuizData[lessonId];
+
+  if (!quiz) {
+    return `
+      <main class="home">
+        <section class="card">
+          <h2>Quiz unavailable</h2>
+          <p>This quiz could not be loaded.</p>
+        </section>
+      </main>
+    `;
+  }
+
+  const question = quiz.questions[state.quiz.questionIndex];
+  const total = quiz.questions.length;
+
+  return `
+    <main class="home">
+      <nav>
+        <button type="button" class="back-btn" data-a="back">
+          ← BACK
+        </button>
+
+        <div class="mini">
+          <b>G</b> G WORLD
+        </div>
+      </nav>
+
+      <section class="lesson-hero">
+        <small>CHECK YOUR UNDERSTANDING</small>
+
+        <h1>${esc(quiz.title)}</h1>
+
+        <p>
+          Question ${state.quiz.questionIndex + 1} of ${total}
+        </p>
+      </section>
+
+      <section class="lesson-card">
+        <h2>${esc(question.question)}</h2>
+
+        <div class="quiz-options">
+          ${question.options.map((option, index) => `
+            <button
+              type="button"
+              class="quiz-option"
+              data-a="lesson-quiz-answer"
+              data-option="${index}"
+            >
+              ${esc(option)}
+            </button>
+          `).join("")}
+        </div>
+
+        <div id="lesson-quiz-feedback"></div>
+      </section>
+    </main>
+  `;
+}
 
 async function generateMemberQR() {
   const canvas = document.querySelector("#member-qr");
@@ -1123,7 +1259,7 @@ if (state.screen === "python-lesson-2") {
           </p>
         </div>
 
-        <button class="primary" data-a="python-lesson-3-practice">
+        <button class="primary" data-a="python-lesson-3-quiz">
           START PRACTICE →
         </button>
       </section>
@@ -1132,6 +1268,10 @@ if (state.screen === "python-lesson-2") {
         G WORLD · Discover What You Need to Know.
       </footer>
     </main>`;
+}
+  if (state.screen === "lesson-quiz") {
+  app.innerHTML = renderLessonQuiz(state.quiz.lessonId);
+  return;
 }
   if (state.screen === "python-lesson-3-practice") {
   app.innerHTML = `
@@ -1345,6 +1485,13 @@ if (a === "python-practice") {
 }
   if (a === "python-lesson-3") {
   goTo("python-lesson-3");
+}
+  if (a === "python-lesson-3-quiz") {
+  state.quiz.lessonId = "python-lesson-3";
+  state.quiz.questionIndex = 0;
+  state.quiz.score = 0;
+
+  goTo("lesson-quiz");
 }
   if (a === "python-lesson-3-practice") {
   goTo("python-lesson-3-practice");
