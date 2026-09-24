@@ -858,8 +858,9 @@ button {
 }
 /* G WORLD clickable card hover */
 .grid article[data-a]:hover {
-  border-color: #16b9a6;
-  background: #0b2733;
+  border-color: var(--g-accent);
+  background: var(--g-panel);
+  color: var(--g-text);
   cursor: pointer;
 }
 /* G WORLD final quiz celebration */
