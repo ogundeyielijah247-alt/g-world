@@ -277,7 +277,8 @@ h1 {
 }
 
 p {
-  color: #9eb2be;
+  color: var(--g-text);
+  opacity: 0.72;
   line-height: 1.6;
 }
 
@@ -376,11 +377,11 @@ button {
 .logout-btn {
   position: relative;
   z-index: 5;
-  border: 1px solid #16b9a655;
+  border: 1px solid var(--g-border);
   border-radius: 9px;
   padding: 7px 12px;
-  background: #071923;
-  color: #8de1d1;
+  background: var(--g-panel-soft);
+  color: var(--g-accent-light);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -392,9 +393,9 @@ button {
 }
 
 .logout-btn:hover {
-  border-color: #16b9a6;
-  background: #0b2733;
-  color: #fff;
+  border-color: var(--g-accent);
+  background: var(--g-panel);
+  color: var(--g-text);
 }
 
 .logout-btn:active {
@@ -581,8 +582,8 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #ffffff12;
-  background: #030c1290;
+  border-bottom: 1px solid var(--g-border);
+  background: var(--g-panel);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -625,9 +626,9 @@ button {
 .continue {
   margin: 0 7%;
   padding: 25px;
-  border: 1px solid #ffffff12;
+  border: 1px solid var(--g-border);
   border-radius: 22px;
-  background: #0e3343aa;
+  background: var(--g-panel);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -671,13 +672,13 @@ button {
 }
 
 .grid small {
-  color: #55d9c5;
-  letter-spacing: 0.14em;
+  color: var(--g-accent-light);
 }
 
 .grid h3 {
   font-size: 17px;
   margin: 18px 0 8px;
+  color: var(--g-text);
 }
 
 .grid p {
@@ -834,9 +835,9 @@ button {
 .feedback-card {
   margin-top: 20px;
   padding: 20px;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--g-border);
   border-radius: 12px;
-  background: rgba(255,255,255,0.04);
+  background: var(--g-panel-soft);
 }
 
 .feedback-card h3 {
@@ -859,7 +860,7 @@ button {
   position: relative;
   overflow: hidden;
   text-align: center;
-  border-color: #16b9a6;
+  border-color: var(--g-accent);
   background:
     radial-gradient(
       circle at 50% 0%,
