@@ -1563,7 +1563,7 @@ if (a === "python-lesson-2-continue") {
   goTo("python-course");
 }
 
-  if (a === "lesson-quiz-answer") {
+if (a === "lesson-quiz-answer") {
   const quiz = lessonQuizData[state.quiz.lessonId];
   const question = quiz?.questions[state.quiz.questionIndex];
 
@@ -1606,7 +1606,9 @@ if (a === "python-lesson-2-continue") {
       <div class="feedback-card">
         <h3>↻ Not quite</h3>
 
-        <p>That's not the correct answer.</p>
+        <p>
+          That's not the correct answer.
+        </p>
 
         <p>
           ${esc(question.explanation)}
