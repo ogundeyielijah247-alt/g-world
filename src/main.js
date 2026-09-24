@@ -1220,6 +1220,132 @@ if (state.screen === "python-lesson-2") {
       </footer>
     </main>`;
 }
+
+  if (state.screen === "python-lesson-3-apply") {
+  const lesson = lessonData["python-lesson-3"];
+
+  app.innerHTML = `
+    <main class="home">
+      ${backButton()}
+
+      <nav>
+        <div class="mini">
+          <b>G</b> G WORLD
+        </div>
+
+        <div class="nav-user">
+          <span>${esc(state.member?.name)}</span>
+          <button class="logout-btn" data-a="logout">
+            LOG OUT
+          </button>
+        </div>
+      </nav>
+
+      <section class="hero">
+        <div class="eyebrow">
+          PYTHON FOUNDATIONS · LESSON 3
+        </div>
+
+        <h1>Apply What You Learned</h1>
+
+        <p>
+          Now let's use variables to create something of our own.
+        </p>
+      </section>
+
+      <section class="continue">
+        <div>
+          <div class="eyebrow">APPLY</div>
+
+          <h2>${esc(lesson.apply.title)}</h2>
+
+          <p>
+            ${esc(lesson.apply.instruction)}
+          </p>
+
+          <p>
+            Your task is to create variables for a person's
+            name and age, then use those variables together
+            in a simple Python program.
+          </p>
+        </div>
+      </section>
+
+      <section class="doors">
+        <h2>Your Task</h2>
+
+        <div class="grid">
+
+          <article>
+            <small>01</small>
+
+            <h3>Create a name variable</h3>
+
+            <p>
+              Create a variable called
+              <strong>name</strong> and store a person's
+              name inside it.
+            </p>
+          </article>
+
+          <article>
+            <small>02</small>
+
+            <h3>Create an age variable</h3>
+
+            <p>
+              Create another variable called
+              <strong>age</strong> and store a person's
+              age inside it.
+            </p>
+          </article>
+
+          <article>
+            <small>03</small>
+
+            <h3>Use your variables</h3>
+
+            <p>
+              Write a simple Python program that uses
+              both variables.
+            </p>
+          </article>
+
+        </div>
+      </section>
+
+      <section class="continue">
+        <div>
+          <div class="eyebrow">EXAMPLE</div>
+
+          <h2>One possible solution</h2>
+
+          <p>
+            You could write:
+          </p>
+
+          <p>
+            <strong>name = "Elijah"</strong>
+          </p>
+
+          <p>
+            <strong>age = 25</strong>
+          </p>
+
+          <p>
+            The important thing is that you understand
+            what each variable is storing.
+          </p>
+        </div>
+      </section>
+
+      <footer>
+        G WORLD · Discover What You Need to Know.
+      </footer>
+    </main>`;
+  return;
+}
+  
  if (state.screen === "python-lesson-3") {
   const lesson = lessonData["python-lesson-3"];
 
@@ -1413,42 +1539,30 @@ if (state.screen === "python-lesson-2") {
   <div>
     <div class="eyebrow">PRACTICE</div>
 
-    <h2>${esc(lesson.practice.title)}</h2>
+    <h2>Create Your First Variable</h2>
 
     <p>
       ${esc(lesson.practice.instruction)}
     </p>
 
     <p>
-      Once you are ready, test your understanding with
-      the lesson quiz.
+      Now use what you have learned and create
+      your own Python variable.
     </p>
   </div>
 
-  <button class="primary" data-a="python-lesson-3-quiz">
+  <button
+    type="button"
+    class="primary"
+    data-a="python-lesson-3-apply"
+  >
     START PRACTICE →
   </button>
 </section>
-
       <footer>
         G WORLD · Discover What You Need to Know.
       </footer>
     </main>`;
-}
-  <button class="primary" data-a="python-lesson-3-quiz">
-    START PRACTICE →
-  </button>
-</section>
-
-      <footer>
-        G WORLD · Discover What You Need to Know.
-      </footer>
-    </main>`;
-}
-}
-
-document.addEventListener("click", e => {
-  const a = e.target.closest("[data-a]")?.dataset.a;
 }
 
 document.addEventListener("click", e => {
