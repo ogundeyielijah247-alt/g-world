@@ -826,4 +826,9 @@ button {
   margin: 8px 0;
   line-height: 1.5;
 }
-
+/* G WORLD clickable card hover */
+.grid article[data-a]:hover {
+  border-color: #16b9a6;
+  background: #0b2733;
+  cursor: pointer;
+}
