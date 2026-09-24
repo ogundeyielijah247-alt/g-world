@@ -839,4 +839,17 @@ button {
     grid-template-columns: 1fr;
   }
 }
-
+.quiz-option-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #16b9a633;
+  border-radius: 8px;
+  background: #091f2b;
+  color: #55d9c5;
+  font-size: 13px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
