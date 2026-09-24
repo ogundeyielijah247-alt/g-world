@@ -557,9 +557,16 @@ function render() {
   </div>
 
   <div class="nav-user">
-    <span>${esc(m.name)}</span>
-    <button class="logout-btn" data-a="logout">LOG OUT</button>
-  </div>
+  <span>${esc(m.name)}</span>
+
+  <button class="logout-btn" data-a="toggle-theme">
+    ${document.documentElement.dataset.theme === "dark" ? "☀ LIGHT" : "☾ DARK"}
+  </button>
+
+  <button class="logout-btn" data-a="logout">
+    LOG OUT
+  </button>
+</div>
 </nav>
 
         <section class="hero">
