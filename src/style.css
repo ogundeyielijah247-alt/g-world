@@ -1,3 +1,24 @@
+:root {
+  --g-bg: #02080d;
+  --g-text: #f5fbff;
+  --g-panel: #091f2b;
+  --g-panel-soft: #071923;
+  --g-border: #16b9a633;
+  --g-accent: #16b9a6;
+  --g-accent-light: #55d9c5;
+  --g-blue: #168dff;
+}
+
+html[data-theme="light"] {
+  --g-bg: #f4f8fa;
+  --g-text: #102027;
+  --g-panel: #ffffff;
+  --g-panel-soft: #eef5f7;
+  --g-border: #16b9a655;
+  --g-accent: #0d9f8d;
+  --g-accent-light: #087c70;
+  --g-blue: #1680df;
+}
 * {
   box-sizing: border-box;
 }
@@ -7,8 +28,8 @@ body,
 #app {
   margin: 0;
   min-height: 100%;
-  background: #02080d;
-  color: #f5fbff;
+  background: var(--g-bg);
+  color: var(--g-text);
   font-family:
     Inter,
     Manrope,
