@@ -66,6 +66,14 @@ window.addEventListener("popstate", event => {
 // Leave it empty when the API is served from the same origin.
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
+const savedTheme = localStorage.getItem("gworld-theme") || "dark";
+
+document.documentElement.dataset.theme = savedTheme;
+
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem("gworld-theme", theme);
+}
 const esc = s =>
   String(s ?? "").replace(/[&<>"']/g, c => ({
     "&": "&amp;",
