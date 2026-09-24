@@ -826,6 +826,35 @@ button {
   margin: 8px 0;
   line-height: 1.5;
 }
+/* G WORLD QUIZ OPTIONS */
 
+.quiz-options {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.quiz-option {
+  display: block;
+  width: 100%;
+  padding: 16px 18px;
+  text-align: left;
+  border: 1px solid #d9dee8;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 16px;
+  line-height: 1.5;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.quiz-option:hover {
+  border-color: #999999;
+}
+
+.quiz-option:active {
+  transform: scale(0.99);
+}
 
 
