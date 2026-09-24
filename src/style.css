@@ -826,5 +826,25 @@ button {
   margin: 8px 0;
   line-height: 1.5;
 }
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
 
+.quiz-option {
+  width: 100%;
+  display: block;
+  padding: 14px 16px;
+  text-align: left;
+  font: inherit;
+  line-height: 1.5;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  background: inherit;
+  color: inherit;
+  box-sizing: border-box;
+  cursor: pointer;
+}
 
