@@ -747,7 +747,13 @@ function render() {
 
         <div class="nav-user">
           <span>${esc(state.member?.name)}</span>
-          <button class="logout-btn" data-a="logout">LOG OUT</button>
+          <button class="logout-btn" data-a="toggle-theme">
+  ${document.documentElement.dataset.theme === "dark" ? "☀ LIGHT" : "☾ DARK"}
+</button>
+
+<button class="logout-btn" data-a="logout">
+  LOG OUT
+</button>
         </div>
       </nav>
 
@@ -1864,6 +1870,15 @@ if (a === "back") {
   goBack();
 }
 
+  if (a === "toggle-theme") {
+  const currentTheme =
+    document.documentElement.dataset.theme || "dark";
+
+  setTheme(currentTheme === "dark" ? "light" : "dark");
+
+  render();
+  return;
+}
 if (a === "logout") {
   localStorage.removeItem("gworld");
   state.member = null;
