@@ -1622,14 +1622,20 @@ if (a === "python-lesson-2-continue") {
       </div>
     `;
   }
-    if (a === "lesson-quiz-next") {
+
+  feedback.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+}
+
+if (a === "lesson-quiz-next") {
   const quiz = lessonQuizData[state.quiz.lessonId];
 
   if (!quiz) return;
 
   if (state.quiz.questionIndex < quiz.questions.length - 1) {
     state.quiz.questionIndex++;
-
     render();
   } else {
     const feedback = document.querySelector("#lesson-quiz-feedback");
@@ -1667,12 +1673,6 @@ if (a === "python-lesson-2-continue") {
 
 if (a === "lesson-quiz-retry") {
   render();
-}
-
-  feedback.scrollIntoView({
-    behavior: "smooth",
-    block: "center"
-  });
 }
   
 if (
