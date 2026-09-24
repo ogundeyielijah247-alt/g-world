@@ -1721,37 +1721,6 @@ if (a === "lesson-quiz-next") {
   if (state.quiz.questionIndex < quiz.questions.length - 1) {
     state.quiz.questionIndex++;
     render();
-  } else {
-    const feedback = document.querySelector("#lesson-quiz-feedback");
-
-    if (feedback) {
-      feedback.innerHTML = `
-        <div class="feedback-card">
-          <h3>✓ Quiz Complete!</h3>
-
-          <p>
-            You scored ${state.quiz.score} out of ${quiz.questions.length}.
-          </p>
-
-          <p>
-            You have completed the Variables understanding check.
-          </p>
-
-          <button
-            type="button"
-            class="logout-btn"
-            data-a="python-course"
-          >
-            CONTINUE →
-          </button>
-        </div>
-      `;
-
-      feedback.scrollIntoView({
-        behavior: "smooth",
-        block: "center"
-      });
-    }
   }
 }
 
