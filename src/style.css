@@ -832,19 +832,61 @@ button {
   gap: 12px;
   margin-top: 24px;
 }
+/* =========================================================
+   G WORLD LEARNING QUIZ
+   ========================================================= */
+
+.quiz-options {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
 
 .quiz-option {
+  position: relative;
+  z-index: 5;
   width: 100%;
-  display: block;
-  padding: 14px 16px;
-  text-align: left;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #16b9a633;
+  border-radius: 14px;
+  background: #091f2bba;
+  color: #f5fbff;
   font: inherit;
+  font-size: 14px;
   line-height: 1.5;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  background: inherit;
-  color: inherit;
-  box-sizing: border-box;
+  text-align: left;
   cursor: pointer;
+  box-sizing: border-box;
 }
+
+.quiz-option:hover {
+  border-color: #16b9a6;
+  background: #0e3343;
+}
+
+.quiz-option:active {
+  transform: translateY(1px);
+}
+
+.quiz-option-letter {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #168dff, #16bba8);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.quiz-option-text {
+  flex: 1;
+  padding-top: 4px;
+}
+
 
