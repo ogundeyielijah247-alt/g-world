@@ -148,52 +148,82 @@ function renderLessonQuiz(lessonId) {
 
   return `
     <main class="home">
-      <nav>
-        <button type="button" class="back-btn" data-a="back">
-          ← BACK
+      ${state.history.length ? `
+        <button class="link" data-a="back">
+          ← Back
         </button>
+      ` : ""}
 
+      <nav>
         <div class="mini">
           <b>G</b> G WORLD
         </div>
+
+        <div class="nav-user">
+          <span>${esc(state.member?.name)}</span>
+          <button class="logout-btn" data-a="logout">
+            LOG OUT
+          </button>
+        </div>
       </nav>
 
-      <section class="lesson-hero">
-        <small>CHECK YOUR UNDERSTANDING</small>
+      <section class="hero">
+        <div class="eyebrow">
+          PYTHON FOUNDATIONS · LESSON 3 PRACTICE
+        </div>
 
-        <h1>${esc(quiz.title)}</h1>
+        <h1>Let's test what you learned.</h1>
 
         <p>
-          Question ${state.quiz.questionIndex + 1} of ${total}
+          Think carefully about what variables do
+          in Python. You can try again if you make a mistake.
         </p>
       </section>
 
+      <section class="continue">
+        <div>
+          <div class="eyebrow">
+            QUESTION ${state.quiz.questionIndex + 1} OF ${total}
+          </div>
+
+          <h2>${esc(question.question)}</h2>
+
+          <p>
+            Choose the answer that best explains
+            what you have learned.
+          </p>
+        </div>
+      </section>
+
       <section class="doors">
-  <h2>${esc(question.question)}</h2>
+        <div class="grid">
 
-  <div class="grid">
+          ${question.options.map((option, index) => `
+            <article
+              data-a="lesson-quiz-answer"
+              data-option="${index}"
+            >
+              <small class="quiz-option-letter">
+                ${String.fromCharCode(65 + index)}
+              </small>
 
-    ${question.options.map((option, index) => `
-      <article
-        data-a="lesson-quiz-answer"
-        data-option="${index}"
-      >
-        <small>${String.fromCharCode(65 + index)}</small>
+              <h3>
+                ${esc(option)}
+              </h3>
+            </article>
+          `).join("")}
 
-        <h3>
-          ${esc(option)}
-        </h3>
-      </article>
-    `).join("")}
+        </div>
 
-  </div>
+        <div id="lesson-quiz-feedback"></div>
+      </section>
 
-  <div id="lesson-quiz-feedback"></div>
-</section>
+      <footer>
+        G WORLD · Discover What You Need to Know.
+      </footer>
     </main>
   `;
 }
-
 async function generateMemberQR() {
   const canvas = document.querySelector("#member-qr");
   const m = state.member;
