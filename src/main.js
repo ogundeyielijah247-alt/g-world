@@ -1220,7 +1220,9 @@ if (state.screen === "python-lesson-2") {
       </footer>
     </main>`;
 }
-  if (state.screen === "python-lesson-3") {
+ if (state.screen === "python-lesson-3") {
+  const lesson = lessonData["python-lesson-3"];
+
   app.innerHTML = `
     <main class="home">
       ${backButton()}
@@ -1237,9 +1239,11 @@ if (state.screen === "python-lesson-2") {
       </nav>
 
       <section class="hero">
-        <div class="eyebrow">PYTHON FOUNDATIONS · LESSON 3</div>
+        <div class="eyebrow">
+          PYTHON FOUNDATIONS · LESSON ${lesson.lessonNumber}
+        </div>
 
-        <h1>Variables</h1>
+        <h1>${esc(lesson.title)}</h1>
 
         <p>
           Now let's learn how Python stores information
@@ -1254,8 +1258,7 @@ if (state.screen === "python-lesson-2") {
           <h2>What is a variable?</h2>
 
           <p>
-            A variable is a name we give to a piece of
-            information that we want Python to remember.
+            ${esc(lesson.learn.introduction)}
           </p>
 
           <p>
@@ -1270,30 +1273,30 @@ if (state.screen === "python-lesson-2") {
 
         <div class="grid">
 
-          <article>
-            <small>01</small>
-            <h3>Name</h3>
-            <p>
-              We give the information a name so we can
-              identify it later.
-            </p>
-          </article>
+          ${lesson.learn.examples.map((example, index) => `
+            <article>
+              <small>0${index + 1}</small>
 
-          <article>
-            <small>02</small>
-            <h3>Value</h3>
-            <p>
-              The value is the information stored
-              inside the variable.
-            </p>
-          </article>
+              <h3>
+                ${index === 0 ? "Name" : "Value"}
+              </h3>
+
+              <p>
+                <strong>${esc(example.code)}</strong>
+              </p>
+
+              <p>
+                ${esc(example.explanation)}
+              </p>
+            </article>
+          `).join("")}
 
           <article>
             <small>03</small>
             <h3>Example</h3>
             <p>
-              name = "Elijah" stores the word Elijah
-              inside a variable called name.
+              ${esc(lesson.learn.examples[0].code)}
+              stores information inside a variable.
             </p>
           </article>
 
@@ -1301,39 +1304,43 @@ if (state.screen === "python-lesson-2") {
       </section>
 
       <section class="continue">
-        <div>
-          <div class="eyebrow">UNDERSTAND</div>
+  <div>
+    <div class="eyebrow">UNDERSTAND</div>
 
-          <h2>Think of a variable as a labelled box</h2>
+    <h2>Think of a variable as a labelled box</h2>
 
-          <p>
-            Imagine a box with the label
-            <strong>name</strong>.
-          </p>
+    <p>
+      Imagine a box with the label
+      <strong>name</strong>.
+    </p>
 
-          <p>
-            Inside the box we place:
-          </p>
+    <p>
+      Inside the box we place:
+    </p>
 
-          <p>
-            <strong>"Elijah"</strong>
-          </p>
+    <p>
+      <strong>"Elijah"</strong>
+    </p>
 
-          <p>
-            In Python, we can write:
-          </p>
+    <p>
+      In Python, we can write:
+    </p>
 
-          <p>
-            <strong>name = "Elijah"</strong>
-          </p>
+    <p>
+      <strong>${esc(lesson.learn.examples[0].code)}</strong>
+    </p>
 
-          <p>
-            Python now remembers that the variable
-            <strong>name</strong> contains
-            <strong>"Elijah"</strong>.
-          </p>
-        </div>
-      </section>
+    <p>
+      Python now remembers that the variable
+      <strong>name</strong> contains
+      <strong>"Elijah"</strong>.
+    </p>
+
+    <p>
+      ${esc(lesson.learn.examples[0].explanation)}
+    </p>
+  </div>
+</section>
 
       <section class="doors">
         <h2>Three Things to Remember</h2>
@@ -1370,193 +1377,64 @@ if (state.screen === "python-lesson-2") {
         </div>
       </section>
 
-      <section class="continue">
-        <div>
-          <div class="eyebrow">PRACTICE</div>
+<section class="continue">
+  <div>
+    <div class="eyebrow">WATCH</div>
 
-          <h2>Ready to test your understanding?</h2>
+    <h2>${esc(lesson.watch.title)}</h2>
 
+    <p>
+      Watch this focused explanation to strengthen
+      your understanding of Python variables.
+    </p>
+
+    ${
+      lesson.watch.videoUrl
+        ? `
+          <a
+            class="primary"
+            href="${esc(lesson.watch.videoUrl)}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            WATCH LESSON →
+          </a>
+        `
+        : `
           <p>
-            Let's check whether you understand
-            what a variable does in Python.
+            A focused lesson video will be added here.
           </p>
-        </div>
+        `
+    }
+  </div>
+</section>
 
-        <button class="primary" data-a="python-lesson-3-quiz">
-          START PRACTICE →
-        </button>
-      </section>
+      <section class="continue">
+  <div>
+    <div class="eyebrow">PRACTICE</div>
+
+    <h2>${esc(lesson.practice.title)}</h2>
+
+    <p>
+      ${esc(lesson.practice.instruction)}
+    </p>
+
+    <p>
+      Once you are ready, test your understanding with
+      the lesson quiz.
+    </p>
+  </div>
+
+  <button class="primary" data-a="python-lesson-3-quiz">
+    START PRACTICE →
+  </button>
+</section>
 
       <footer>
         G WORLD · Discover What You Need to Know.
       </footer>
     </main>`;
 }
-  if (state.screen === "lesson-quiz") {
-  app.innerHTML = renderLessonQuiz(state.quiz.lessonId);
-  return;
-}
-  if (state.screen === "python-lesson-3-practice") {
-  app.innerHTML = `
-    <main class="home">
-      ${backButton()}
-
-      <nav>
-        <div class="mini">
-          <b>G</b> G WORLD
-        </div>
-
-        <div class="nav-user">
-          <span>${esc(state.member?.name)}</span>
-          <button class="logout-btn" data-a="logout">LOG OUT</button>
-        </div>
-      </nav>
-
-      <section class="hero">
-        <div class="eyebrow">PYTHON FOUNDATIONS · LESSON 3 PRACTICE</div>
-
-        <h1>Let's test what you learned.</h1>
-
-        <p>
-          Think carefully about what variables do
-          in Python.
-        </p>
-      </section>
-
-      <section class="continue">
-        <div>
-          <div class="eyebrow">QUESTION 1</div>
-
-          <h2>What is a variable?</h2>
-
-          <p>
-            Choose the answer that best explains
-            what a variable does in Python.
-          </p>
-        </div>
-      </section>
-
-      <section class="doors">
-        <div class="grid">
-
-          <article data-a="python-lesson-3-answer-wrong">
-            <h3>A</h3>
-            <p>
-              A computer screen.
-            </p>
-          </article>
-
-          <article data-a="python-lesson-3-answer-correct">
-            <h3>B</h3>
-            <p>
-              A named place used to store information.
-            </p>
-          </article>
-
-          <article data-a="python-lesson-3-answer-wrong">
-            <h3>C</h3>
-            <p>
-              A type of computer.
-            </p>
-          </article>
-
-          <article data-a="python-lesson-3-answer-wrong">
-            <h3>D</h3>
-            <p>
-              A button used to start Python.
-            </p>
-          </article>
-
-        </div>
-      </section>
-
-      <div id="python-lesson-3-feedback" class="python-feedback"></div>
-
-      <footer>
-        G WORLD · Discover What You Need to Know.
-      </footer>
-    </main>`;
-}
-  if (state.screen === "python-practice") {
-  app.innerHTML = `
-    <main class="home">
-      ${backButton()}
-
-      <nav>
-        <div class="mini">
-          <b>G</b> G WORLD
-        </div>
-
-        <div class="nav-user">
-          <span>${esc(state.member?.name)}</span>
-          <button class="logout-btn" data-a="logout">LOG OUT</button>
-        </div>
-      </nav>
-
-      <section class="hero">
-        <div class="eyebrow">PYTHON FOUNDATIONS · PRACTICE</div>
-
-        <h1>Let's see what you understand.</h1>
-
-        <p>
-          Take a moment to think about what you have just learned.
-          There is no pressure to get it right the first time.
-        </p>
-      </section>
-
-      <section class="continue">
-        <div>
-          <div class="eyebrow">QUESTION 1</div>
-
-          <h2>What is Python?</h2>
-
-          <p>
-            Choose the answer that best explains what Python is.
-          </p>
-        </div>
-      </section>
-
-      <section class="doors">
-        <div class="grid">
-
-         <article data-a="python-answer-wrong">
-  <h3>A</h3>
-  <p>
-    A type of computer hardware.
-  </p>
-</article>
-
-<article data-a="python-answer-correct">
-  <h3>B</h3>
-  <p>
-    A programming language used to give instructions
-    to a computer.
-  </p>
-</article>
-
-<article data-a="python-answer-wrong">
-  <h3>C</h3>
-  <p>
-    A social media platform.
-  </p>
-</article>
-
-<article data-a="python-answer-wrong">
-  <h3>D</h3>
-  <p>
-    An operating system.
-  </p>
-</article>
-
-<div id="python-feedback" class="python-feedback"></div>
-</div>
-      </section>
-      
-      <footer>
-        G WORLD · Discover What You Need to Know.
-      </footer>
-    </main>`;
-  }
 }
 
 document.addEventListener("click", e => {
@@ -1731,9 +1609,9 @@ if (a === "lesson-quiz-answer") {
             <button
               type="button"
               class="logout-btn"
-              data-a="python-course"
+              data-a="python-lesson-3-apply"
             >
-              CONTINUE LEARNING →
+              CONTINUE TO APPLY →
             </button>
 
           </div>
@@ -1871,7 +1749,7 @@ if (
 if (a === "python-lesson-3-continue") {
   goTo("python-course");
 }
-
+  
   if (a === "python-continue") {
   console.log("CONTINUE BUTTON CLICKED");
   goTo("python-course");
