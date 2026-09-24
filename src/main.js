@@ -1622,47 +1622,89 @@ if (a === "lesson-quiz-answer") {
 
   if (!feedback) return;
 
-  feedback.innerHTML = state.quiz.questionIndex === quiz.questions.length - 1
-  ? `
-    <div class="feedback-card quiz-complete">
-      <h3>🎉 You did it!</h3>
+  if (selectedOption === question.answer) {
+    state.quiz.score++;
 
-      <p>
-        ${esc(question.explanation)}
-      </p>
+    feedback.innerHTML =
+      state.quiz.questionIndex === quiz.questions.length - 1
+        ? `
+          <div class="feedback-card quiz-complete">
 
-      <p>
-        You completed the Variables understanding check.
-      </p>
+            <div class="quiz-celebration">🎉</div>
 
-      <button
-        type="button"
-        class="logout-btn"
-        data-a="lesson-quiz-next"
-      >
-        SEE YOUR RESULT →
-      </button>
-    </div>
-  `
-  : `
-    <div class="feedback-card">
-      <h3>✓ Correct!</h3>
+            <div class="eyebrow">
+              UNDERSTANDING CHECK COMPLETE
+            </div>
 
-      <p>Well done.</p>
+            <h3>You did it!</h3>
 
-      <p>
-        ${esc(question.explanation)}
-      </p>
+            <div class="quiz-score">
+              ${state.quiz.score} / ${quiz.questions.length}
+            </div>
 
-      <button
-        type="button"
-        class="logout-btn"
-        data-a="lesson-quiz-next"
-      >
-        NEXT QUESTION →
-      </button>
-    </div>
-  `;
+            <p>
+              You completed the Variables understanding check.
+            </p>
+
+            <p>
+              ${esc(question.explanation)}
+            </p>
+
+            <button
+              type="button"
+              class="logout-btn"
+              data-a="python-course"
+            >
+              CONTINUE LEARNING →
+            </button>
+
+          </div>
+        `
+        : `
+          <div class="feedback-card">
+
+            <h3>✓ Correct!</h3>
+
+            <p>Well done.</p>
+
+            <p>
+              ${esc(question.explanation)}
+            </p>
+
+            <button
+              type="button"
+              class="logout-btn"
+              data-a="lesson-quiz-next"
+            >
+              NEXT QUESTION →
+            </button>
+
+          </div>
+        `;
+  } else {
+    feedback.innerHTML = `
+      <div class="feedback-card">
+
+        <h3>↻ Not quite</h3>
+
+        <p>
+          That's not the correct answer.
+        </p>
+
+        <p>
+          ${esc(question.explanation)}
+        </p>
+
+        <button
+          type="button"
+          class="logout-btn"
+          data-a="lesson-quiz-retry"
+        >
+          TRY AGAIN
+        </button>
+
+      </div>
+    `;
   }
 
   feedback.scrollIntoView({
