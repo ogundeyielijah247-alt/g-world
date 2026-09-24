@@ -665,9 +665,9 @@ button {
   z-index: 1;
   min-height: 165px;
   padding: 22px;
-  border: 1px solid #16b9a633;
+  border: 1px solid var(--g-border);
   border-radius: 18px;
-  background: #091f2bba;
+  background: var(--g-panel);
 }
 
 .grid small {
