@@ -1435,6 +1435,20 @@ if (state.screen === "python-lesson-2") {
       </footer>
     </main>`;
 }
+  <button class="primary" data-a="python-lesson-3-quiz">
+    START PRACTICE →
+  </button>
+</section>
+
+      <footer>
+        G WORLD · Discover What You Need to Know.
+      </footer>
+    </main>`;
+}
+}
+
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-a]")?.dataset.a;
 }
 
 document.addEventListener("click", e => {
@@ -1486,6 +1500,9 @@ if (a === "python-practice") {
 }
   if (a === "python-lesson-3") {
   goTo("python-lesson-3");
+}
+  if (a === "python-lesson-3-apply") {
+  goTo("python-lesson-3-apply");
 }
   if (a === "python-lesson-3-quiz") {
   state.quiz.lessonId = "python-lesson-3";
