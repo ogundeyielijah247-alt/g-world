@@ -1622,52 +1622,47 @@ if (a === "lesson-quiz-answer") {
 
   if (!feedback) return;
 
-  if (selectedOption === question.answer) {
-    state.quiz.score++;
+  feedback.innerHTML = state.quiz.questionIndex === quiz.questions.length - 1
+  ? `
+    <div class="feedback-card quiz-complete">
+      <h3>🎉 You did it!</h3>
 
-    feedback.innerHTML = `
-      <div class="feedback-card">
-        <h3>✓ Correct!</h3>
+      <p>
+        ${esc(question.explanation)}
+      </p>
 
-        <p>Well done.</p>
+      <p>
+        You completed the Variables understanding check.
+      </p>
 
-        <p>
-          ${esc(question.explanation)}
-        </p>
+      <button
+        type="button"
+        class="logout-btn"
+        data-a="lesson-quiz-next"
+      >
+        SEE YOUR RESULT →
+      </button>
+    </div>
+  `
+  : `
+    <div class="feedback-card">
+      <h3>✓ Correct!</h3>
 
-        <button
-          type="button"
-          class="logout-btn"
-          data-a="lesson-quiz-next"
-        >
-          ${state.quiz.questionIndex === quiz.questions.length - 1
-            ? "FINISH QUIZ →"
-            : "NEXT QUESTION →"}
-        </button>
-      </div>
-    `;
-  } else {
-    feedback.innerHTML = `
-      <div class="feedback-card">
-        <h3>↻ Not quite</h3>
+      <p>Well done.</p>
 
-        <p>
-          That's not the correct answer.
-        </p>
+      <p>
+        ${esc(question.explanation)}
+      </p>
 
-        <p>
-          ${esc(question.explanation)}
-        </p>
-
-        <button
-          type="button"
-          class="logout-btn"
-          data-a="lesson-quiz-retry"
-        >
-          TRY AGAIN
-        </button>
-      </div>
-    `;
+      <button
+        type="button"
+        class="logout-btn"
+        data-a="lesson-quiz-next"
+      >
+        NEXT QUESTION →
+      </button>
+    </div>
+  `;
   }
 
   feedback.scrollIntoView({
