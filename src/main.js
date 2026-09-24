@@ -26,6 +26,13 @@ function goTo(screen) {
   }
 
   state.screen = screen;
+
+  window.history.pushState(
+    { gworld: true, screen },
+    "",
+    window.location.href
+  );
+
   render();
 
   requestAnimationFrame(() => {
@@ -36,7 +43,6 @@ function goTo(screen) {
     });
   });
 }
-
 function goBack() {
   if (!state.history.length) return;
 
@@ -46,6 +52,11 @@ function goBack() {
   render();
 }
 
+window.addEventListener("popstate", event => {
+  if (!event.state?.gworld) return;
+
+  goBack();
+});
 // Set VITE_API_BASE_URL when the frontend and API are deployed separately.
 // Leave it empty when the API is served from the same origin.
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
