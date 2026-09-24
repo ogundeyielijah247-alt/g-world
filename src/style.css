@@ -832,3 +832,58 @@ button {
   background: #0b2733;
   cursor: pointer;
 }
+/* G WORLD final quiz celebration */
+
+.quiz-complete {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  border-color: #16b9a6;
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(22, 185, 166, 0.18),
+      transparent 60%
+    ),
+    rgba(255, 255, 255, 0.04);
+}
+
+.quiz-complete::before,
+.quiz-complete::after {
+  content: "✦  ✧  ✦  ✧  ✦";
+  position: absolute;
+  top: -10px;
+  left: 0;
+  width: 100%;
+  color: #55d9c5;
+  font-size: 18px;
+  letter-spacing: 18px;
+  animation: celebrationFall 2s ease-out forwards;
+  pointer-events: none;
+}
+
+.quiz-complete::after {
+  color: #168dff;
+  animation-delay: 0.15s;
+}
+
+@keyframes celebrationFall {
+  0% {
+    transform: translateY(-30px) rotate(-4deg);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(120px) rotate(4deg);
+    opacity: 0;
+  }
+}
+
+.quiz-complete h3 {
+  font-size: 24px;
+  margin-bottom: 14px;
+}
