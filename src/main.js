@@ -65,6 +65,42 @@ window.addEventListener("popstate", event => {
 // Set VITE_API_BASE_URL when the frontend and API are deployed separately.
 // Leave it empty when the API is served from the same origin.
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+let pyodide = null;
+let pyodideReady = null;
+
+async function loadPython() {
+  if (pyodide) return pyodide;
+
+  if (!pyodideReady) {
+    pyodideReady = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+
+      script.src =
+        "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js";
+
+      script.onload = async () => {
+        try {
+          pyodide = await window.loadPyodide({
+            indexURL:
+              "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/"
+          });
+
+          resolve(pyodide);
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      script.onerror = () => {
+        reject(new Error("Python runtime could not be loaded."));
+      };
+
+      document.head.appendChild(script);
+    });
+  }
+
+  return pyodideReady;
+}
 
 const savedTheme = localStorage.getItem("gworld-theme") || "dark";
 
@@ -1534,37 +1570,97 @@ if (state.screen === "python-lesson-2") {
     }
   </div>
 </section>
-
-      <section class="continue">
-  <div>
-    <div class="eyebrow">PRACTICE</div>
-
-    <h2>Create Your First Variable</h2>
-
-    <p>
-      ${esc(lesson.practice.instruction)}
-    </p>
-
-    <p>
-      Now use what you have learned and create
-      your own Python variable.
-    </p>
-  </div>
-
-  <button
-    type="button"
-    class="primary"
-    data-a="python-lesson-3-apply"
-  >
-    START PRACTICE →
-  </button>
-</section>
       <footer>
         G WORLD · Discover What You Need to Know.
       </footer>
     </main>`;
 }
+if (state.screen === "python-lesson-3-practice") {
+  const lesson = lessonData["python-lesson-3"];
 
+  app.innerHTML = `
+    <main class="home">
+      ${backButton()}
+
+      <nav>
+        <div class="mini">
+          <b>G</b> G WORLD
+        </div>
+
+        <div class="nav-user">
+          <span>${esc(state.member?.name)}</span>
+          <button class="logout-btn" data-a="logout">LOG OUT</button>
+        </div>
+      </nav>
+
+      <section class="hero">
+        <div class="eyebrow">
+          PYTHON FOUNDATIONS · PRACTICE
+        </div>
+
+        <h1>Create Your First Variable</h1>
+
+        <p>
+          Now it is your turn. Write Python code, run it,
+          and see what happens.
+        </p>
+      </section>
+
+      <section class="continue">
+        <div>
+          <div class="eyebrow">GUIDED PRACTICE</div>
+
+          <h2>Step 1 — Create a variable</h2>
+
+          <p>
+            ${esc(lesson.practice.instruction)}
+          </p>
+
+          <p>
+            Start with the idea:
+          </p>
+
+          <p>
+            <strong>name = "Elijah"</strong>
+          </p>
+        </div>
+      </section>
+
+      <section class="continue">
+        <div>
+          <div class="eyebrow">YOUR CODE</div>
+
+          <h2>Write your Python code</h2>
+
+          <textarea
+            id="python-code"
+            rows="8"
+            spellcheck="false"
+            placeholder='name = "Elijah"'
+          ></textarea>
+
+          <button
+            type="button"
+            class="primary"
+            data-a="run-python"
+          >
+            RUN CODE →
+          </button>
+
+          <div
+            id="python-output"
+            aria-live="polite"
+          >
+            Your result will appear here.
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        G WORLD · Discover What You Need to Know.
+      </footer>
+    </main>`;
+}
 document.addEventListener("click", e => {
   const a = e.target.closest("[data-a]")?.dataset.a;
 
@@ -1579,6 +1675,53 @@ document.addEventListener("click", e => {
     state.screen = "existing";
     render();
   }
+
+ if (a === "run-python") {
+  const code = document.querySelector("#python-code")?.value || "";
+  const output = document.querySelector("#python-output");
+
+  if (!output) return;
+
+  if (!code.trim()) {
+    output.textContent = "Write some Python code first.";
+    return;
+  }
+
+  output.textContent = "Starting Python...";
+
+  try {
+    const python = await loadPython();
+
+    let result = "";
+
+    python.setStdout({
+      batched: text => {
+        result += text;
+      }
+    });
+
+    python.setStderr({
+      batched: text => {
+        result += text;
+      }
+    });
+
+    const value = await python.runPythonAsync(code);
+
+    if (value !== undefined && value !== null) {
+      result += String(value);
+    }
+
+    output.textContent =
+      result.trim() || "Code ran successfully.";
+  } catch (error) {
+    output.textContent =
+      "Python error: " + (error?.message || String(error));
+  }
+}
+
+  output.textContent = "Python execution will be connected here.";
+}
 
   if (a === "back-entry") {
     state.error = "";
