@@ -1,2599 +1,243 @@
+// G WORLD — MAIN.JS
+// Complete frontend foundation for:
+// Member access • Courses • Tech Skills • AI & Technology • JAMB • Work Ready
+// Payments • Support • Certificates • Admin entry • New/Existing Information
+// Free-tier conscious architecture
+
 import "./style.css";
 import QRCode from "qrcode";
 
 const app = document.querySelector("#app");
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+
 const state = {
   screen: "splash",
+  history: [],
   member: null,
   error: "",
   loading: false,
+  data: null,
+  supportMessages: [],
+  selectedPayment: null,
   selectedCourse: null,
-  selectedLesson: null,
-  selectedSection: null
+  admin: null
 };
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const PAYMENT = {
+  amount: 3000,
+  provider: "OPay",
+  accountNumber: "8051598490",
+  accountName: "Ogundeji Elijah Olusola"
+};
 
-const esc = s =>
-  String(s ?? "").replace(/[&<>"']/g, c => ({
+const esc = value =>
+  String(value ?? "").replace(/[&<>\"']/g, char => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
     "'": "&#039;"
-  }[c]));
+  }[char]));
 
-const videos = {
-  pythonFull: {
-    title: "Python Full Course for Beginners — Programming with Mosh",
-    videoId: "_uQrJ0TkZlc"
-  },
+const naira = value =>
+  `₦${Number(value || 0).toLocaleString("en-NG")}`;
 
-  pythonVariables: {
-    title: "Python Variables — Programming with Mosh",
-    videoId: "cQT33yu9pY8"
-  },
+function goTo(screen, data = {}) {
+  if (state.screen === screen) return;
 
-  accountingBasics: {
-    title: "Accounting Basics: a Guide to (Almost) Everything — Accounting Stuff",
-    videoId: "yYX4bvQSqbo"
-  },
+  const protectedScreens = ["splash", "entry", "card"];
 
-  jambPrep: {
-    title: "BEST WAY to study & prepare for JAMB Examination",
-    videoId: "9MPJ4EQqjQM"
-  },
-
-  jambCbt: {
-    title: "JAMB CBT Demo — JAMB CBT Practice",
-    videoId: "WSHihZqHqY4"
-  },
-
-  excelAnalysis: {
-    title: "Beginner to Pro FREE Excel Data Analysis Course",
-    videoId: "v2oNWja7M2E"
-  },
-
-  variablesAlternative: {
-    title: "Python Tutorial for Absolute Beginners — What Are Variables?",
-    videoId: "Z1Yd7upQsXY"
+  if (!protectedScreens.includes(state.screen)) {
+    state.history.push(state.screen);
   }
-};
 
-const youtube = video => {
-  if (!video?.videoId) return "";
+  Object.assign(state, data);
+  state.screen = screen;
+  render();
+}
 
-  return `
-    <div class="video-box">
-      <div class="video-label">
-        <span>WATCH & LEARN</span>
-        <small>${esc(video.title)}</small>
-      </div>
+function goBack() {
+  if (!state.history.length) {
+    state.screen = "home";
+    render();
+    return;
+  }
 
-      <div class="video-frame">
-        <iframe
-          src="https://www.youtube.com/embed/${encodeURIComponent(video.videoId)}"
-          title="${esc(video.title)}"
-          loading="lazy"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowfullscreen>
-        </iframe>
-      </div>
+  state.screen = state.history.pop();
+  render();
+}
 
-      <a
-        class="video-fallback"
-        href="https://www.youtube.com/watch?v=${encodeURIComponent(video.videoId)}"
-        target="_blank"
-        rel="noopener noreferrer">
-        Open this video on YouTube ↗
-      </a>
-    </div>
-  `;
-};
+function clearError() {
+  state.error = "";
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok || result.ok === false) {
+    throw new Error(result.error || "G WORLD request failed.");
+  }
+
+  return result;
+}
 
 async function generateMemberQR() {
   const canvas = document.querySelector("#member-qr");
-  const m = state.member;
+  const member = state.member;
 
-  if (!canvas || !m?.gworldId) return;
+  if (!canvas || !member?.gworldId) return;
 
-  const verificationUrl =
-    `https://g-world.ogundeyelijah13.workers.dev/verify/${encodeURIComponent(m.gworldId)}`;
+  const verificationURL =
+    `https://g-world.ogundeyelijah13.workers.dev/verify/${encodeURIComponent(member.gworldId)}`;
 
   try {
-    await QRCode.toCanvas(canvas, verificationUrl, {
+    await QRCode.toCanvas(canvas, verificationURL, {
       width: 150,
       margin: 2,
       errorCorrectionLevel: "M"
     });
   } catch (error) {
-    console.error("QR generation failed", error);
+    console.error("QR generation failed:", error);
   }
 }
 
-function go(screen) {
-  state.screen = screen;
-  state.error = "";
-  render();
-}
-
-function shell(content, title = "G WORLD") {
+function certificateHTML(course, member) {
   return `
-    <main class="home">
-      <nav>
-        <button class="mini brand-button" data-a="home">
-          <b>G</b> G WORLD
-        </button>
-
-        <div class="nav-user">
-          <span>${esc(state.member?.name || "")}</span>
-          <button class="logout-btn" data-a="logout">LOG OUT</button>
-        </div>
-      </nav>
-
-      ${content}
-
-      <footer>
-        G WORLD · Discover What You Need to Know.
-      </footer>
-    </main>
-  `;
-}
-
-function pageHero(eyebrow, title, text, image = "") {
-  return `
-    <section class="hero ${image ? "hero-image" : ""}"
-      ${image ? `style="--hero-image:url('${esc(image)}')"` : ""}>
-      <div class="eyebrow">${esc(eyebrow)}</div>
-      <h1>${esc(title)}</h1>
-      <p>${esc(text)}</p>
-    </section>
-  `;
-}
-
-function backButton(target = "home", label = "← Back") {
-  return `
-    <button class="link back-link" data-a="${esc(target)}">
-      ${esc(label)}
-    </button>
-  `;
-}
-import "./style.css";
-import QRCode from "qrcode";
-
-const app = document.querySelector("#app");
-
-const state = {
-  screen: "splash",
-  member: null,
-  error: "",
-  loading: false,
-  selectedCourse: null,
-  selectedLesson: null,
-  selectedSection: null
-};
-
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
-
-const esc = s =>
-  String(s ?? "").replace(/[&<>"']/g, c => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  }[c]));
-
-const videos = {
-  pythonFull: {
-    title: "Python Full Course for Beginners — Programming with Mosh",
-    videoId: "_uQrJ0TkZlc"
-  },
-
-  pythonVariables: {
-    title: "Python Variables — Programming with Mosh",
-    videoId: "cQT33yu9pY8"
-  },
-
-  accountingBasics: {
-    title: "Accounting Basics: a Guide to (Almost) Everything — Accounting Stuff",
-    videoId: "yYX4bvQSqbo"
-  },
-
-  jambPrep: {
-    title: "BEST WAY to study & prepare for JAMB Examination",
-    videoId: "9MPJ4EQqjQM"
-  },
-
-  jambCbt: {
-    title: "JAMB CBT Demo — JAMB CBT Practice",
-    videoId: "WSHihZqHqY4"
-  },
-
-  excelAnalysis: {
-    title: "Beginner to Pro FREE Excel Data Analysis Course",
-    videoId: "v2oNWja7M2E"
-  },
-
-  variablesAlternative: {
-    title: "Python Tutorial for Absolute Beginners — What Are Variables?",
-    videoId: "Z1Yd7upQsXY"
-  }
-};
-
-const youtube = video => {
-  if (!video?.videoId) return "";
-
-  return `
-    <div class="video-box">
-      <div class="video-label">
-        <span>WATCH & LEARN</span>
-        <small>${esc(video.title)}</small>
-      </div>
-
-      <div class="video-frame">
-        <iframe
-          src="https://www.youtube.com/embed/${encodeURIComponent(video.videoId)}"
-          title="${esc(video.title)}"
-          loading="lazy"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowfullscreen>
-        </iframe>
-      </div>
-
-      <a
-        class="video-fallback"
-        href="https://www.youtube.com/watch?v=${encodeURIComponent(video.videoId)}"
-        target="_blank"
-        rel="noopener noreferrer">
-        Open this video on YouTube ↗
-      </a>
-    </div>
-  `;
-};
-
-async function generateMemberQR() {
-  const canvas = document.querySelector("#member-qr");
-  const m = state.member;
-
-  if (!canvas || !m?.gworldId) return;
-
-  const verificationUrl =
-    `https://g-world.ogundeyelijah13.workers.dev/verify/${encodeURIComponent(m.gworldId)}`;
-
-  try {
-    await QRCode.toCanvas(canvas, verificationUrl, {
-      width: 150,
-      margin: 2,
-      errorCorrectionLevel: "M"
-    });
-  } catch (error) {
-    console.error("QR generation failed", error);
-  }
-}
-
-function go(screen) {
-  state.screen = screen;
-  state.error = "";
-  render();
-}
-
-function shell(content, title = "G WORLD") {
-  return `
-    <main class="home">
-      <nav>
-        <button class="mini brand-button" data-a="home">
-          <b>G</b> G WORLD
-        </button>
-
-        <div class="nav-user">
-          <span>${esc(state.member?.name || "")}</span>
-          <button class="logout-btn" data-a="logout">LOG OUT</button>
-        </div>
-      </nav>
-
-      ${content}
-
-      <footer>
-        G WORLD · Discover What You Need to Know.
-      </footer>
-    </main>
-  `;
-}
-
-function pageHero(eyebrow, title, text, image = "") {
-  return `
-    <section class="hero ${image ? "hero-image" : ""}"
-      ${image ? `style="--hero-image:url('${esc(image)}')"` : ""}>
-      <div class="eyebrow">${esc(eyebrow)}</div>
-      <h1>${esc(title)}</h1>
-      <p>${esc(text)}</p>
-    </section>
-  `;
-}
-
-function backButton(target = "home", label = "← Back") {
-  return `
-    <button class="link back-link" data-a="${esc(target)}">
-      ${esc(label)}
-    </button>
-  `;
-}
-const informationSections = [
-  {
-    id: "ai",
-    title: "AI & Technology",
-    image:
-      "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=75",
-    description:
-      "Understand important developments in artificial intelligence and technology without having to search through thousands of posts.",
-    video: videos.pythonFull,
-    items: [
-      {
-        title: "AI Fundamentals",
-        description:
-          "Understand what artificial intelligence is, what machine learning means, and where AI is being used.",
-        video: videos.pythonFull
-      },
-      {
-        title: "AI Tools",
-        description:
-          "Learn how to identify useful AI tools and match them to real problems.",
-        video: videos.pythonFull
-      },
-      {
-        title: "Prompting",
-        description:
-          "Learn how to communicate clearly with AI systems to obtain useful results.",
-        video: videos.pythonFull
-      },
-      {
-        title: "AI for Students",
-        description:
-          "Use AI to understand difficult topics, organise research and improve learning without replacing your own thinking.",
-        video: videos.pythonFull
-      }
-    ]
-  },
-
-  {
-    id: "jamb",
-    title: "JAMB",
-    image:
-      "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=75",
-    description:
-      "A focused JAMB preparation area bringing information, syllabus guidance, CBT practice, subject combinations and past-question resources together.",
-    video: videos.jambPrep,
-    items: [
-      {
-        title: "JAMB Information / News",
-        description:
-          "Current JAMB information is reviewed before publication and displayed with its source and update date.",
-        video: videos.jambPrep
-      },
-      {
-        title: "JAMB Syllabus",
-        description:
-          "Subject-by-subject syllabus guidance organised for easier study planning.",
-        video: videos.jambPrep
-      },
-      {
-        title: "JAMB CBT",
-        description:
-          "Practise questions in a CBT-style environment.",
-        video: videos.jambCbt
-      },
-      {
-        title: "JAMB Subject Combination",
-        description:
-          "Search courses and view the relevant UTME subject combination after the requirement has been reviewed.",
-        video: videos.jambPrep
-      },
-      {
-        title: "JAMB Past Questions",
-        description:
-          "Practise from properly sourced materials uploaded and managed by G WORLD administrators.",
-        video: videos.jambCbt
-      }
-    ]
-  },
-
-  {
-    id: "ican",
-    title: "ICAN / ATS",
-    image:
-      "https://images.unsplash.com/photo-1554224154-26032ffc0d07?auto=format&fit=crop&w=1200&q=75",
-    description:
-      "A structured accounting-technician learning area connecting study resources, past questions, mixed practice and current professional information.",
-    video: videos.accountingBasics,
-    items: [
-      {
-        title: "ATS Study Pack Link",
-        description:
-          "Access the official ICAN ATSWA learning-materials area configured by G WORLD Admin.",
-        video: videos.accountingBasics
-      },
-      {
-        title: "ATS Study",
-        description:
-          "Learn ATSWA subjects through structured explanations, videos, questions and practical application.",
-        video: videos.accountingBasics
-      },
-      {
-        title: "ATS Past Questions",
-        description:
-          "Past-question materials uploaded and organised by subject.",
-        video: videos.accountingBasics
-      },
-      {
-        title: "ATS Mixed Past Questions",
-        description:
-          "Practise mixed questions across subjects to test broader understanding.",
-        video: videos.accountingBasics
-      },
-      {
-        title: "ATS News",
-        description:
-          "Current professional and examination information reviewed before publication.",
-        video: videos.accountingBasics
-      }
-    ]
-  }
-];
-
-const workReady = [
-  {
-    title: "Quality Ownership",
-    description:
-      "Learn how to take responsibility for the quality of your work.",
-    video: videos.accountingBasics
-  },
-  {
-    title: "Customer Service",
-    description:
-      "Understand communication, listening, problem-solving and professional customer interaction.",
-    video: videos.accountingBasics
-  },
-  {
-    title: "Work Ethics",
-    description:
-      "Learn professional behaviour, responsibility, honesty, confidentiality and accountability.",
-    video: videos.accountingBasics
-  },
-  {
-    title: "Work-Life Balance",
-    description:
-      "Understand practical ways to organise work, responsibilities, energy and personal life.",
-    video: videos.accountingBasics
-  }
-];
-
-const jambQuestions = [
-  {
-    id: "j1",
-    subject: "Use of English",
-    question: "Choose the word closest in meaning to 'abundant'.",
-    options: ["Scarce", "Plentiful", "Tiny", "Weak"],
-    answer: 1
-  },
-  {
-    id: "j2",
-    subject: "Mathematics",
-    question: "If 2x + 6 = 14, what is x?",
-    options: ["2", "3", "4", "5"],
-    answer: 2
-  },
-  {
-    id: "j3",
-    subject: "Biology",
-    question: "Which structure controls many activities of a cell?",
-    options: ["Nucleus", "Cell wall", "Vacuole", "Ribosome"],
-    answer: 0
-  },
-  {
-    id: "j4",
-    subject: "Economics",
-    question: "What generally happens to quantity demanded when price rises, other things being equal?",
-    options: [
-      "It rises",
-      "It falls",
-      "It remains fixed",
-      "It becomes zero"
-    ],
-    answer: 1
-  },
-  {
-    id: "j5",
-    subject: "Commerce",
-    question: "Which document normally shows goods supplied and their prices?",
-    options: ["Invoice", "Passport", "Certificate", "Receipt book"],
-    answer: 0
-  }
-];
-
-const jambStreams = {
-  Science: [
-    "Use of English",
-    "Mathematics",
-    "Physics",
-    "Chemistry",
-    "Biology"
-  ],
-  Commercial: [
-    "Use of English",
-    "Mathematics",
-    "Economics",
-    "Commerce",
-    "Accounting"
-  ],
-  Arts: [
-    "Use of English",
-    "Literature",
-    "Government",
-    "CRS / IRS",
-    "History"
-  ]
-};
-
-const courseCombinations = [
-  {
-    course: "Accounting",
-    combination:
-      "Use of English + Mathematics + Economics + one relevant subject according to the current official requirement.",
-    source:
-      "Verify against the current official JAMB/IBASS requirement before relying on it."
-  },
-  {
-    course: "Computer Science",
-    combination:
-      "Use of English + Mathematics + two relevant science/technical subjects according to the current official requirement.",
-    source:
-      "Verify against the current official JAMB/IBASS requirement before relying on it."
-  },
-  {
-    course: "Economics",
-    combination:
-      "Use of English + Mathematics + Economics + one relevant subject according to the current official requirement.",
-    source:
-      "Verify against the current official JAMB/IBASS requirement before relying on it."
-  },
-  {
-    course: "Business Administration",
-    combination:
-      "Use of English + Mathematics + Economics + one relevant subject according to the current official requirement.",
-    source:
-      "Verify against the current official JAMB/IBASS requirement before relying on it."
-  }
-];
-
-const pastQuestionResources = [
-  {
-    title: "JAMB Past Questions",
-    type: "Admin-managed resource",
-    description:
-      "Past-question files can be uploaded by Admin, categorised by subject and year, and made available to learners."
-  },
-  {
-    title: "ATS Past Questions",
-    type: "Admin-managed resource",
-    description:
-      "ATSWA past-question resources can be uploaded and organised by subject and examination diet."
-  }
-];
-
-const catalogue = [
-  "Accounting",
-  "Economics",
-  "Business Administration",
-  "Finance",
-  "Marketing",
-  "Entrepreneurship",
-  "Cooperative & Rural Development",
-  "Management",
-  "Statistics",
-  "Mathematics",
-  "Computer Science",
-  "Information Technology",
-  "Research Methodology",
-  "Project Management",
-  "Communication",
-  "Excel",
-  "SQL",
-  "Data Analysis",
-  "Power BI",
-  "Tableau",
-  "Web Development",
-  "HTML / CSS",
-  "JavaScript",
-  "Git / GitHub",
-  "Databases",
-  "Cybersecurity Fundamentals",
-  "Cloud Fundamentals",
-  "UI / UX",
-  "Digital Literacy",
-  "AI Fundamentals",
-  "AI Tools",
-  "Prompting",
-  "Prompt Engineering",
-  "AI Research",
-  "AI for Students",
-  "AI for Business",
-  "AI for Content Creation",
-  "AI Agents / Bots",
-  "AI Automation",
-  "n8n",
-  "Make",
-  "Zapier",
-  "AI + Python",
-  "Responsible AI"
-];
-
-const projects = [
-  {
-    title: "Beginner Python Project",
-    description:
-      "Build a small useful Python application using the concepts learned.",
-    steps: [
-      "Understand the problem",
-      "Plan the solution",
-      "Write the first version",
-      "Test it",
-      "Fix errors",
-      "Explain how it works",
-      "Submit for verification"
-    ],
-    video: videos.pythonFull
-  },
-  {
-    title: "Accounting Analysis Project",
-    description:
-      "Use a small financial dataset to understand transactions, accounts and financial information.",
-    steps: [
-      "Understand the dataset",
-      "Classify information",
-      "Perform calculations",
-      "Prepare a structured analysis",
-      "Explain findings",
-      "Present the result"
-    ],
-    video: videos.accountingBasics
-  }
-];
-function renderEntry() {
-  app.innerHTML = `
-    <main class="center enter-screen">
-      <section class="panel">
-        <div class="form-brand">
-          <span>G</span><b>G WORLD</b>
-        </div>
-
-        <div class="eyebrow">WELCOME TO G WORLD</div>
-
-        <h1>How would you like to enter?</h1>
-
-        <p>
-          Start a new G WORLD journey or continue with your existing
-          G WORLD account.
-        </p>
-
-        <div class="entry-options">
-          <button class="primary full" data-a="new-member">
-            NEW MEMBER
-          </button>
-
-          <button class="secondary full" data-a="existing-member">
-            EXISTING MEMBER
-          </button>
-        </div>
-
-        <div class="form-footnote">
-          Your G WORLD ID stays with you as you continue learning.
-        </div>
-      </section>
-    </main>
-  `;
-}
-
-function renderOnboard() {
-  app.innerHTML = `
-    <main class="center enter-screen">
-      <section class="panel">
-        <div class="form-brand">
-          <span>G</span><b>G WORLD</b>
-        </div>
-
-        <div class="eyebrow">NEW MEMBER</div>
-
-        <h1>Start your journey.</h1>
-
-        <p>
-          Enter your basic details. Your G WORLD ID and digital member
-          card will be created automatically.
-        </p>
-
-        <form id="f" novalidate>
-          <label>
-            Full Name
-            <input name="name" required autocomplete="name"
-              placeholder="Your full name" maxlength="80">
-            <small class="field-error" data-error="name"></small>
-          </label>
-
-          <label>
-            Phone Number
-            <input name="phone" required autocomplete="tel"
-              placeholder="Your phone number" maxlength="30">
-            <small class="field-error" data-error="phone"></small>
-          </label>
-
-          <label>
-            Email <small>(optional)</small>
-            <input name="email" type="email" autocomplete="email"
-              placeholder="you@example.com" maxlength="120">
-            <small class="field-error" data-error="email"></small>
-          </label>
-
-          <small class="form-error" id="form-error">
-            ${esc(state.error)}
-          </small>
-
-          <button class="primary full" type="submit"
-            ${state.loading ? "disabled" : ""}>
-            ${state.loading
-              ? "CREATING YOUR G WORLD ID…"
-              : "CREATE MY G WORLD ID"}
-          </button>
-        </form>
-
-        <button class="link" data-a="back-entry">← Back</button>
-
-        <small class="privacy-note">
-          Your G WORLD ID is a platform identity. It is not a government ID
-          or password.
-        </small>
-      </section>
-    </main>
-  `;
-}
-
-function renderExisting() {
-  app.innerHTML = `
-    <main class="center enter-screen">
-      <section class="panel">
-        <div class="form-brand">
-          <span>G</span><b>G WORLD</b>
-        </div>
-
-        <div class="eyebrow">EXISTING MEMBER</div>
-
-        <h1>Welcome back.</h1>
-
-        <p>
-          Enter the details connected to your G WORLD account.
-        </p>
-
-        <form id="existing-form" novalidate>
-          <label>
-            Full Name
-            <input name="name" required autocomplete="name"
-              placeholder="Your full name" maxlength="80">
-            <small class="field-error"
-              data-error="existing-name"></small>
-          </label>
-
-          <label>
-            Email
-            <input name="email" type="email" required
-              autocomplete="email" placeholder="you@example.com"
-              maxlength="120">
-            <small class="field-error"
-              data-error="existing-email"></small>
-          </label>
-
-          <small class="form-error">
-            ${esc(state.error)}
-          </small>
-
-          <button class="primary full" type="submit"
-            ${state.loading ? "disabled" : ""}>
-            ${state.loading ? "ENTERING G WORLD…" : "ENTER G WORLD"}
-          </button>
-        </form>
-
-        <button class="link" data-a="back-entry">← Back</button>
-      </section>
-    </main>
-  `;
-}
-
-function renderCard() {
-  const m = state.member;
-
-  app.innerHTML = `
-    <main class="center">
-      <div class="card">
-        <header>
-          <div class="mini">
-            <b>G</b>
-            <span>
+    <div class="certificate-preview">
+      <div class="certificate-border">
+        <div class="certificate-inner">
+
+          <div class="certificate-brand">
+            <div class="certificate-g-mark">G</div>
+            <div>
               <strong>G WORLD</strong>
               <small>Discover What You Need to Know.</small>
-            </span>
+            </div>
           </div>
-        </header>
 
-        <section>
-          <em>WELCOME TO G WORLD</em>
-          <h2>${esc(m?.name)}</h2>
+          <div class="certificate-kicker">
+            CERTIFICATE OF COMPLETION
+          </div>
 
-          <div class="info">
-            <div>
-              <small>PHONE</small>
-              <strong>${esc(m?.phone)}</strong>
-            </div>
+          <h1>Certificate of Achievement</h1>
 
-            <div>
-              <small>STATUS</small>
-              <strong>${esc(m?.status || "ACTIVE")}</strong>
-            </div>
+          <p class="certificate-intro">
+            This certificate is proudly presented to
+          </p>
 
+          <h2>${esc(member?.name || "Learner Name")}</h2>
+
+          <div class="certificate-rule"></div>
+
+          <p class="certificate-body">
+            for successfully completing the G WORLD learning programme
+          </p>
+
+          <h3>${esc(course?.title || "G WORLD Course")}</h3>
+
+          <div class="certificate-meta">
             <div>
               <small>G WORLD ID</small>
-              <strong>${esc(m?.gworldId)}</strong>
+              <strong>${esc(member?.gworldId || "GW-XX-XXXXXX")}</strong>
             </div>
-          </div>
 
-          <div class="qr">
-            <canvas id="member-qr"></canvas>
-            <small>
-              SCAN TO VERIFY<br>
-              THIS G WORLD MEMBER
-            </small>
-          </div>
-        </section>
-
-        <footer>
-          <b>Welcome to G WORLD!</b>
-          <span>Your learning journey starts here.</span>
-          <span>Stay committed. Keep learning. Grow with G WORLD.</span>
-        </footer>
-      </div>
-
-      <button class="primary" data-a="home">
-        ENTER G WORLD
-      </button>
-
-      <button class="link" data-a="reset">
-        Start over
-      </button>
-    </main>
-  `;
-
-  generateMemberQR();
-}
-
-function renderHome() {
-  const m = state.member;
-
-  app.innerHTML = shell(`
-    <section class="hero">
-      <div class="eyebrow">G WORLD</div>
-
-      <h1>Discover what you need to know.</h1>
-
-      <p>
-        Useful knowledge. Clear learning. Practical growth.
-        One place to reduce information overload.
-      </p>
-    </section>
-
-    <section class="continue">
-      <div>
-        <div class="eyebrow">YOUR G WORLD</div>
-        <h2>Welcome back, ${esc(m?.name)}.</h2>
-        <p>
-          Continue learning, discover useful information and build
-          practical skills.
-        </p>
-      </div>
-
-      <code>${esc(m?.gworldId)}</code>
-    </section>
-
-    <section class="doors">
-      <h2>Explore G WORLD</h2>
-
-      <div class="visual-grid">
-        <article class="visual-door"
-          data-a="courses"
-          style="--door-image:url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=900&q=70')">
-          <div>
-            <small>01</small>
-            <h3>University Courses</h3>
-            <p>Understand your field from the foundation upward.</p>
-          </div>
-        </article>
-
-        <article class="visual-door"
-          data-a="tech-skills"
-          style="--door-image:url('https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=70')">
-          <div>
-            <small>02</small>
-            <h3>Tech Skills</h3>
-            <p>Learn practical digital skills through guided practice.</p>
-          </div>
-        </article>
-
-        <article class="visual-door"
-          data-a="ai"
-          style="--door-image:url('https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=900&q=70')">
-          <div>
-            <small>03</small>
-            <h3>AI & Technology</h3>
-            <p>Find the information that matters without the noise.</p>
-          </div>
-        </article>
-
-        <article class="visual-door"
-          data-a="jamb"
-          style="--door-image:url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=900&q=70')">
-          <div>
-            <small>04</small>
-            <h3>JAMB</h3>
-            <p>Information, syllabus, CBT, combinations and practice.</p>
-          </div>
-        </article>
-
-        <article class="visual-door"
-          data-a="ican"
-          style="--door-image:url('https://images.unsplash.com/photo-1554224154-26032ffc0d07?auto=format&fit=crop&w=900&q=70')">
-          <div>
-            <small>05</small>
-            <h3>ICAN / ATS</h3>
-            <p>Study resources, practice and professional information.</p>
-          </div>
-        </article>
-
-        <article class="visual-door"
-          data-a="work-ready"
-          style="--door-image:url('https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=70')">
-          <div>
-            <small>06</small>
-            <h3>Work Ready</h3>
-            <p>Build the skills employers expect in real work.</p>
-          </div>
-        </article>
-
-        <article class="visual-door"
-          data-a="projects"
-          style="--door-image:url('https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=900&q=70')">
-          <div>
-            <small>07</small>
-            <h3>Projects</h3>
-            <p>Move from knowing something to actually building.</p>
-          </div>
-        </article>
-
-        <article class="visual-door"
-          data-a="support"
-          style="--door-image:url('https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=70')">
-          <div>
-            <small>08</small>
-            <h3>GWard Support</h3>
-            <p>Need help? Reach the G WORLD support team.</p>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <section class="update-strip">
-      <div>
-        <span class="eyebrow">NEW INFORMATION</span>
-        <h2>Stay informed without drowning in information.</h2>
-        <p>
-          Important updates are organised, reviewed and moved into
-          existing information as they become older.
-        </p>
-      </div>
-
-      <button class="secondary" data-a="information">
-        EXPLORE INFORMATION
-      </button>
-    </section>
-  `);
-}
-function renderCourses() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "UNIVERSITY COURSES",
-      "Understand your field from the foundation upward.",
-      "A structured learning environment that gives you the explanation,
-      examples, videos, practice and direction you need."
-    )}
-
-    <section class="doors">
-      <h2>Course Catalogue</h2>
-
-      <div class="visual-grid">
-        ${universityCourses.map(course => `
-          <article
-            class="visual-door course-card"
-            data-a="course"
-            data-id="${esc(course.id)}"
-            style="--door-image:url('${esc(course.image)}')">
             <div>
-              <small>${esc(course.category)}</small>
-              <h3>${esc(course.title)}</h3>
-              <p>${esc(course.description)}</p>
-              <span class="door-link">OPEN COURSE →</span>
+              <small>CERTIFICATE ID</small>
+              <strong>GW-CERT-${esc(member?.gworldId || "XXXX")}</strong>
             </div>
-          </article>
-        `).join("")}
-      </div>
-    </section>
 
-    <section class="continue">
-      <div>
-        <div class="eyebrow">MORE COURSES COMING</div>
-        <h2>Build the catalogue without rebuilding G WORLD.</h2>
-        <p>
-          New courses can be added through the Admin content system
-          instead of changing the learner interface.
-        </p>
-      </div>
-    </section>
-
-    ${backButton()}
-  `);
-}
-
-function renderCourse(course) {
-  if (!course) {
-    go("courses");
-    return;
-  }
-
-  state.selectedCourse = course.id;
-
-  app.innerHTML = shell(`
-    ${pageHero(
-      course.title.toUpperCase(),
-      course.title,
-      course.description,
-      course.image
-    )}
-
-    <section class="continue">
-      <div>
-        <div class="eyebrow">YOUR ROADMAP</div>
-        <h2>What you will learn</h2>
-
-        <div class="roadmap-list">
-          ${course.roadmap.map((item, i) => `
-            <div class="roadmap-item">
-              <span>${String(i + 1).padStart(2, "0")}</span>
-              <strong>${esc(item)}</strong>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    </section>
-
-    ${youtube(course.video)}
-
-    <section class="doors">
-      <h2>Lessons</h2>
-
-      <div class="grid">
-        ${course.lessons.map((lesson, i) => `
-          <article
-            data-a="lesson"
-            data-id="${esc(lesson.id)}">
-            <small>LESSON ${String(i + 1).padStart(2, "0")}</small>
-            <h3>${esc(lesson.title)}</h3>
-            <p>${esc(lesson.text)}</p>
-            <span class="door-link">START LESSON →</span>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-
-    ${backButton("courses")}
-  `);
-}
-
-function renderLesson(course, lesson) {
-  if (!course || !lesson) {
-    go("courses");
-    return;
-  }
-
-  state.selectedLesson = lesson.id;
-
-  app.innerHTML = shell(`
-    ${pageHero(
-      `LEARN · ${course.title}`,
-      lesson.title,
-      "Learn it simply. Watch it. Check your understanding. Then practise."
-    )}
-
-    <section class="continue lesson-content">
-      <div>
-        <div class="eyebrow">LEARN</div>
-        <h2>Understand the idea</h2>
-        <p>${esc(lesson.text)}</p>
-
-        <div class="lesson-points">
-          ${lesson.points.map(point => `
-            <div class="lesson-point">
-              <span>✓</span>
-              <p>${esc(point)}</p>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    </section>
-
-    ${youtube(lesson.video)}
-
-    <section class="doors">
-      <h2>Check Your Understanding</h2>
-
-      <div class="question-list">
-        ${lesson.questions.map((question, i) => `
-          <article>
-            <small>QUESTION ${i + 1}</small>
-            <h3>${esc(question)}</h3>
-            <button class="secondary" data-a="show-answer">
-              THINK ABOUT IT
-            </button>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-
-    <section class="practice-panel">
-      <div>
-        <div class="eyebrow">PRACTISE</div>
-        <h2>Now use what you learned.</h2>
-        <p>
-          Learning becomes useful when you can apply the idea to a
-          problem of your own.
-        </p>
-      </div>
-
-      <button
-        class="primary"
-        data-a="${lesson.action || "practice"}">
-        START PRACTICE
-      </button>
-    </section>
-
-    ${backButton("course")}
-  `);
-}
-
-function renderTechSkills() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "TECH SKILLS",
-      "Learn skills you can actually use.",
-      "Step-by-step learning with explanations, videos, guided practice,
-      challenges and projects."
-    )}
-
-    <section class="doors">
-      <h2>Technology Learning</h2>
-
-      <div class="visual-grid">
-        ${techSkills.map(skill => `
-          <article
-            class="visual-door"
-            data-a="skill"
-            data-id="${esc(skill.id)}"
-            style="--door-image:url('${esc(skill.image)}')">
             <div>
-              <small>TECH SKILL</small>
-              <h3>${esc(skill.title)}</h3>
-              <p>${esc(skill.description)}</p>
-              <span class="door-link">START LEARNING →</span>
+              <small>DATE</small>
+              <strong>${new Date().toLocaleDateString("en-NG")}</strong>
             </div>
-          </article>
-        `).join("")}
-      </div>
-    </section>
+          </div>
 
-    ${backButton()}
-  `);
-}
-
-function renderSkill(skill) {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "TECH SKILL",
-      skill.title,
-      skill.description
-    )}
-
-    ${youtube(skill.video)}
-
-    <section class="doors">
-      <h2>Learning Path</h2>
-
-      <div class="grid">
-        ${skill.lessons.map((lesson, i) => `
-          <article
-            data-a="skill-lesson"
-            data-id="${esc(lesson.id)}">
-            <small>${String(i + 1).padStart(2, "0")}</small>
-            <h3>${esc(lesson.title)}</h3>
-            <p>${esc(lesson.text)}</p>
-            <span class="door-link">OPEN →</span>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-
-    ${backButton("tech-skills")}
-  `);
-}
-
-function renderInformation() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "INFORMATION",
-      "Less noise. More useful knowledge.",
-      "G WORLD brings important information together so you spend less
-      time searching and more time understanding."
-    )}
-
-    <section class="doors">
-      <h2>Information Areas</h2>
-
-      <div class="visual-grid">
-        ${informationSections.map(section => `
-          <article
-            class="visual-door"
-            data-a="information-section"
-            data-id="${esc(section.id)}"
-            style="--door-image:url('${esc(section.image)}')">
-            <div>
-              <small>UPDATED INFORMATION</small>
-              <h3>${esc(section.title)}</h3>
-              <p>${esc(section.description)}</p>
-              <span class="door-link">EXPLORE →</span>
+          <div class="certificate-footer">
+            <div class="certificate-sign">
+              <span></span>
+              <small>G WORLD AUTHORIZED SIGNATURE</small>
             </div>
-          </article>
-        `).join("")}
-      </div>
-    </section>
 
-    <section class="update-strip">
-      <div>
-        <span class="eyebrow">NEW → EXISTING</span>
-        <h2>Information does not simply disappear.</h2>
-        <p>
-          New information can be highlighted while older approved
-          information remains available as Existing Information.
-        </p>
-      </div>
-    </section>
-
-    ${backButton()}
-  `);
-}
-function renderInformationSection(section) {
-  app.innerHTML = shell(`
-    ${pageHero(
-      section.title.toUpperCase(),
-      section.title,
-      section.description,
-      section.image
-    )}
-
-    ${youtube(section.video)}
-
-    <section class="doors">
-      <div class="section-heading-row">
-        <div>
-          <span class="eyebrow">NEW INFORMATION</span>
-          <h2>Important things to know</h2>
-        </div>
-
-        <span class="updated-badge">
-          LAST REVIEWED · ADMIN CONTROLLED
-        </span>
-      </div>
-
-      <div class="grid">
-        ${section.items.map((item, i) => `
-          <article
-            data-a="information-item"
-            data-section="${esc(section.id)}"
-            data-index="${i}">
-            <small>${String(i + 1).padStart(2, "0")}</small>
-            <h3>${esc(item.title)}</h3>
-            <p>${esc(item.description)}</p>
-            <span class="door-link">LEARN MORE →</span>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-
-    <section class="continue">
-      <div>
-        <div class="eyebrow">EXISTING INFORMATION</div>
-        <h2>Older approved information remains useful.</h2>
-        <p>
-          Once information is no longer considered new, it can move
-          into the Existing Information area rather than being deleted.
-        </p>
-      </div>
-    </section>
-
-    ${backButton("information")}
-  `);
-}
-
-function renderInformationItem(section, item) {
-  app.innerHTML = shell(`
-    ${pageHero(
-      section.title,
-      item.title,
-      item.description
-    )}
-
-    <section class="continue lesson-content">
-      <div>
-        <div class="eyebrow">UNDERSTAND</div>
-        <h2>What you should know</h2>
-
-        <p>${esc(item.description)}</p>
-
-        <div class="lesson-points">
-          <div class="lesson-point">
-            <span>01</span>
-            <p>Understand the basic idea before moving to deeper material.</p>
-          </div>
-
-          <div class="lesson-point">
-            <span>02</span>
-            <p>Watch the focused video and return to G WORLD.</p>
-          </div>
-
-          <div class="lesson-point">
-            <span>03</span>
-            <p>Apply what you learned to a real situation.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    ${youtube(item.video)}
-
-    ${backButton("information-section")}
-  `);
-}
-
-function renderJamb() {
-  const streams = Object.entries(jambStreams);
-
-  app.innerHTML = shell(`
-    ${pageHero(
-      "JAMB",
-      "Prepare with direction, not information overload.",
-      "Bring JAMB information, syllabus, CBT practice, subject combinations
-      and past-question resources into one organised learning path."
-    )}
-
-    ${youtube(videos.jambPrep)}
-
-    <section class="visual-feature">
-      <div class="visual-feature-image"
-        style="background-image:url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=75')">
-      </div>
-
-      <div class="visual-feature-content">
-        <span class="eyebrow">JAMB PREPARATION</span>
-        <h2>Know what to study. Know why you are studying it.</h2>
-        <p>
-          Start with the official syllabus and requirements, then use
-          structured practice to identify what you understand and what
-          needs more work.
-        </p>
-
-        <button class="primary" data-a="jamb-cbt">
-          START CBT PRACTICE
-        </button>
-      </div>
-    </section>
-
-    <section class="doors">
-      <h2>JAMB Learning Areas</h2>
-
-      <div class="grid">
-        <article data-a="jamb-news">
-          <small>01</small>
-          <h3>JAMB Information / News</h3>
-          <p>Current reviewed information and important announcements.</p>
-        </article>
-
-        <article data-a="jamb-syllabus">
-          <small>02</small>
-          <h3>JAMB Syllabus</h3>
-          <p>Subject-by-subject study guidance.</p>
-        </article>
-
-        <article data-a="jamb-cbt">
-          <small>03</small>
-          <h3>JAMB CBT</h3>
-          <p>Practise questions in a structured CBT environment.</p>
-        </article>
-
-        <article data-a="jamb-combinations">
-          <small>04</small>
-          <h3>Subject Combination</h3>
-          <p>Find course requirements and verify against current official information.</p>
-        </article>
-
-        <article data-a="jamb-past">
-          <small>05</small>
-          <h3>Past Questions</h3>
-          <p>Access administrator-managed past-question resources.</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="doors">
-      <h2>Study Streams</h2>
-
-      <div class="grid">
-        ${streams.map(([name, subjects], i) => `
-          <article>
-            <small>STREAM ${i + 1}</small>
-            <h3>${esc(name)}</h3>
-            <p>${subjects.map(esc).join(" · ")}</p>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-
-    ${backButton()}
-  `);
-}
-
-function renderJambNews() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "JAMB INFORMATION",
-      "Know what is changing.",
-      "Current information is intended to be reviewed before it becomes
-      visible to learners."
-    )}
-
-    ${youtube(videos.jambPrep)}
-
-    <section class="update-strip">
-      <div>
-        <span class="eyebrow">CURRENT INFORMATION</span>
-        <h2>JAMB updates</h2>
-        <p>
-          The Admin review system is designed to keep current information
-          separate from older archived information.
-        </p>
-      </div>
-    </section>
-
-    <section class="doors">
-      <h2>Information categories</h2>
-
-      <div class="grid">
-        <article>
-          <small>01</small>
-          <h3>Registration</h3>
-          <p>Important registration information.</p>
-        </article>
-
-        <article>
-          <small>02</small>
-          <h3>Examination</h3>
-          <p>Important examination information.</p>
-        </article>
-
-        <article>
-          <small>03</small>
-          <h3>Results</h3>
-          <p>Result-related information.</p>
-        </article>
-
-        <article>
-          <small>04</small>
-          <h3>Admission</h3>
-          <p>Admission-related information.</p>
-        </article>
-      </div>
-    </section>
-
-    ${backButton("jamb")}
-  `);
-}
-
-function renderJambSyllabus() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "JAMB SYLLABUS",
-      "Study from a clear direction.",
-      "Choose your subject area, understand what you are expected to cover,
-      then practise."
-    )}
-
-    ${youtube(videos.jambPrep)}
-
-    <section class="doors">
-      <h2>Subjects</h2>
-
-      <div class="grid">
-        ${[
-          "Use of English",
-          "Mathematics",
-          "Physics",
-          "Chemistry",
-          "Biology",
-          "Economics",
-          "Commerce",
-          "Accounting",
-          "Government",
-          "Literature",
-          "History",
-          "CRS / IRS"
-        ].map((subject, i) => `
-          <article>
-            <small>${String(i + 1).padStart(2, "0")}</small>
-            <h3>${esc(subject)}</h3>
-            <p>
-              Subject syllabus and study guidance managed through G WORLD.
-            </p>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-
-    ${backButton("jamb")}
-  `);
-}
-function renderJambCBT() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "JAMB CBT",
-      "Practise. Check. Improve.",
-      "Use short practice sessions to discover what you know and what
-      you still need to learn."
-    )}
-
-    ${youtube(videos.jambCbt)}
-
-    <section class="doors">
-      <h2>Choose a practice stream</h2>
-
-      <div class="grid">
-        ${Object.keys(jambStreams).map((stream, i) => `
-          <article
-            data-a="jamb-stream"
-            data-stream="${esc(stream)}">
-            <small>STREAM ${i + 1}</small>
-            <h3>${esc(stream)}</h3>
-            <p>
-              ${jambStreams[stream].map(esc).join(" · ")}
-            </p>
-            <span class="door-link">PRACTISE →</span>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-
-    ${backButton("jamb")}
-  `);
-}
-
-function renderJambStream(stream) {
-  const questions = jambQuestions.filter((q, i) =>
-    stream === "Science"
-      ? [0, 1, 2].includes(i)
-      : stream === "Commercial"
-        ? [0, 1, 3, 4].includes(i)
-        : [0].includes(i)
-  );
-
-  app.innerHTML = shell(`
-    ${pageHero(
-      `JAMB CBT · ${stream}`,
-      `${stream} Practice`,
-      "Answer the questions, review your result and return to the
-      syllabus when you find a weak area."
-    )}
-
-    <section class="practice-panel">
-      <div>
-        <div class="eyebrow">PRACTICE SET</div>
-        <h2>${questions.length} questions ready</h2>
-        <p>
-          This is the beginning of the question system. The Admin
-          question bank can continuously add reviewed questions.
-        </p>
-      </div>
-    </section>
-
-    <section class="question-list">
-      ${questions.map((q, i) => `
-        <article class="cbt-question">
-          <small>${esc(q.subject)} · QUESTION ${i + 1}</small>
-          <h3>${esc(q.question)}</h3>
-
-          <div class="answer-grid">
-            ${q.options.map((option, index) => `
-              <button
-                class="secondary answer-choice"
-                data-a="jamb-answer"
-                data-q="${esc(q.id)}"
-                data-answer="${index}">
-                ${String.fromCharCode(65 + index)}. ${esc(option)}
-              </button>
-            `).join("")}
-          </div>
-
-          <div class="answer-result" id="result-${esc(q.id)}"></div>
-        </article>
-      `).join("")}
-    </section>
-
-    ${backButton("jamb-cbt")}
-  `);
-}
-
-function renderJambCombinations() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "JAMB SUBJECT COMBINATION",
-      "Find the requirement for your course.",
-      "Search the course you want and check the current official requirement
-      before making your final subject choices."
-    )}
-
-    ${youtube(videos.jambPrep)}
-
-    <section class="search-panel">
-      <label>
-        Search course
-        <input
-          id="combination-search"
-          placeholder="e.g. Accounting"
-          autocomplete="off">
-      </label>
-    </section>
-
-    <section class="doors" id="combination-results">
-      ${courseCombinations.map(item => `
-        <article class="combination-card">
-          <small>COURSE</small>
-          <h3>${esc(item.course)}</h3>
-          <p>${esc(item.combination)}</p>
-          <span>${esc(item.source)}</span>
-        </article>
-      `).join("")}
-    </section>
-
-    ${backButton("jamb")}
-  `);
-}
-
-function renderJambPast() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "JAMB PAST QUESTIONS",
-      "Practise from organised resources.",
-      "Past-question resources are managed by Admin so files can be
-      organised, reviewed and replaced when necessary."
-    )}
-
-    ${youtube(videos.jambCbt)}
-
-    <section class="doors">
-      ${pastQuestionResources.map((resource, i) => `
-        <article>
-          <small>${String(i + 1).padStart(2, "0")}</small>
-          <h3>${esc(resource.title)}</h3>
-          <p>${esc(resource.description)}</p>
-          <span>${esc(resource.type)}</span>
-        </article>
-      `).join("")}
-    </section>
-
-    ${backButton("jamb")}
-  `);
-}
-
-function renderIcan() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "ICAN / ATS",
-      "Build your accounting technician journey.",
-      "Bring study materials, explanations, videos, past questions,
-      mixed practice and current professional information together."
-    )}
-
-    ${youtube(videos.accountingBasics)}
-
-    <section class="visual-feature">
-      <div class="visual-feature-image"
-        style="background-image:url('https://images.unsplash.com/photo-1554224154-26032ffc0d07?auto=format&fit=crop&w=1200&q=75')">
-      </div>
-
-      <div class="visual-feature-content">
-        <span class="eyebrow">ATS STUDY PACK</span>
-        <h2>Go directly to the official study-material source.</h2>
-        <p>
-          The final study-pack destination is controlled by Admin so that
-          the link can be updated whenever the official source changes.
-        </p>
-
-        <button class="secondary" data-a="ats-study-link">
-          OPEN ATS STUDY PACK
-        </button>
-      </div>
-    </section>
-
-    <section class="doors">
-      <h2>ICAN / ATS Learning Areas</h2>
-
-      <div class="grid">
-        <article data-a="ats-study">
-          <small>01</small>
-          <h3>ATS Study</h3>
-          <p>Structured learning across ATS subjects.</p>
-        </article>
-
-        <article data-a="ats-past">
-          <small>02</small>
-          <h3>ATS Past Questions</h3>
-          <p>Subject-organised past-question resources.</p>
-        </article>
-
-        <article data-a="ats-mixed">
-          <small>03</small>
-          <h3>ATS Mixed Past Questions</h3>
-          <p>Mixed practice to test broader understanding.</p>
-        </article>
-
-        <article data-a="ats-news">
-          <small>04</small>
-          <h3>ATS News</h3>
-          <p>Current professional and examination information.</p>
-        </article>
-      </div>
-    </section>
-
-    ${backButton()}
-  `);
-}
-function renderIcanStudy() {
-  const subjects = [
-    "Basic Accounting",
-    "Financial Accounting",
-    "Cost Accounting",
-    "Taxation",
-    "Business Law",
-    "Economics",
-    "Communication Skills",
-    "Information Technology",
-    "Management",
-    "Principles of Auditing & Assurance",
-    "Public Sector Accounting",
-    "Quantitative Analysis"
-  ];
-
-  app.innerHTML = shell(`
-    ${pageHero(
-      "ATS STUDY",
-      "Study one subject at a time.",
-      "Understand the idea, watch the relevant explanation, practise and
-      connect the topic to examination questions."
-    )}
-
-    ${youtube(videos.accountingBasics)}
-
-    <section class="doors">
-      <h2>ATS Subjects</h2>
-
-      <div class="grid">
-        ${subjects.map((subject, i) => `
-          <article>
-            <small>${String(i + 1).padStart(2, "0")}</small>
-            <h3>${esc(subject)}</h3>
-            <p>
-              Structured explanation, focused video, examples and
-              practice questions.
-            </p>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-
-    ${backButton("ican")}
-  `);
-}
-
-function renderIcanPast() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "ATS PAST QUESTIONS",
-      "Practise the way you will be tested.",
-      "Past-question materials can be uploaded and organised by Admin."
-    )}
-
-    ${youtube(videos.accountingBasics)}
-
-    <section class="doors">
-      <article>
-        <small>RESOURCE LIBRARY</small>
-        <h3>Uploaded ATS Past Questions</h3>
-        <p>
-          Files are categorised by subject, year and examination diet
-          when that information is available.
-        </p>
-      </article>
-
-      <article>
-        <small>ADMIN CONTROLLED</small>
-        <h3>More Questions</h3>
-        <p>
-          New files can be added without changing the learner interface.
-        </p>
-      </article>
-    </section>
-
-    ${backButton("ican")}
-  `);
-}
-
-function renderIcanMixed() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "ATS MIXED PAST QUESTIONS",
-      "Test your wider understanding.",
-      "Mixed practice combines questions from different subject areas."
-    )}
-
-    ${youtube(videos.accountingBasics)}
-
-    <section class="practice-panel">
-      <div>
-        <span class="eyebrow">MIXED PRACTICE</span>
-        <h2>Ready for a mixed set?</h2>
-        <p>
-          The question bank can grow continuously as Admin adds reviewed
-          questions.
-        </p>
-      </div>
-
-      <button class="primary" data-a="mixed-start">
-        START MIXED PRACTICE
-      </button>
-    </section>
-
-    ${backButton("ican")}
-  `);
-}
-
-function renderIcanNews() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "ATS NEWS",
-      "Keep up with important professional information.",
-      "Current information is separated from older information so learners
-      can quickly see what needs attention."
-    )}
-
-    ${youtube(videos.accountingBasics)}
-
-    <section class="update-strip">
-      <div>
-        <span class="eyebrow">NEW INFORMATION</span>
-        <h2>Latest reviewed ATS information</h2>
-        <p>
-          Admin-approved updates appear here. Older items remain available
-          through Existing Information.
-        </p>
-      </div>
-    </section>
-
-    ${backButton("ican")}
-  `);
-}
-
-function renderWorkReady() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "WORK READY",
-      "Learn how to operate professionally.",
-      "Work Ready is a learning category covering the behaviours and
-      practical skills people need in real workplaces."
-    )}
-
-    ${youtube(videos.accountingBasics)}
-
-    <section class="doors">
-      <h2>Work Ready Courses</h2>
-
-      <div class="grid">
-        ${workReady.map((item, i) => `
-          <article
-            data-a="work-course"
-            data-index="${i}">
-            <small>${String(i + 1).padStart(2, "0")}</small>
-            <h3>${esc(item.title)}</h3>
-            <p>${esc(item.description)}</p>
-            <span class="door-link">LEARN →</span>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-
-    ${backButton()}
-  `);
-}
-
-function renderWorkCourse(item) {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "WORK READY",
-      item.title,
-      item.description
-    )}
-
-    <section class="continue lesson-content">
-      <div>
-        <div class="eyebrow">LEARN</div>
-        <h2>Build the habit</h2>
-        <p>${esc(item.description)}</p>
-
-        <div class="lesson-points">
-          <div class="lesson-point">
-            <span>01</span>
-            <p>Understand what professional behaviour looks like.</p>
-          </div>
-
-          <div class="lesson-point">
-            <span>02</span>
-            <p>See how it works in a real workplace.</p>
-          </div>
-
-          <div class="lesson-point">
-            <span>03</span>
-            <p>Practise the behaviour.</p>
-          </div>
-
-          <div class="lesson-point">
-            <span>04</span>
-            <p>Apply it consistently.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    ${youtube(item.video)}
-
-    ${backButton("work-ready")}
-  `);
-}
-
-function renderProjects() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "PROJECTS",
-      "Move from knowing to building.",
-      "Projects help you apply knowledge, solve problems, create evidence
-      of your ability and prepare for verification."
-    )}
-
-    ${youtube(videos.pythonFull)}
-
-    <section class="doors">
-      <h2>Project Library</h2>
-
-      <div class="grid">
-        ${projects.map((project, i) => `
-          <article data-a="project" data-index="${i}">
-            <small>PROJECT ${String(i + 1).padStart(2, "0")}</small>
-            <h3>${esc(project.title)}</h3>
-            <p>${esc(project.description)}</p>
-            <span class="door-link">OPEN PROJECT →</span>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-
-    <section class="practice-panel">
-      <div>
-        <span class="eyebrow">PROJECT WRITER</span>
-        <h2>Need help with an academic project?</h2>
-        <p>
-          Understand your topic, then move through Chapter One to
-          Chapter Five with guidance.
-        </p>
-      </div>
-
-      <button class="secondary" data-a="project-writer">
-        OPEN PROJECT WRITER
-      </button>
-    </section>
-
-    ${backButton()}
-  `);
-}
-function renderProject(project) {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "PROJECT",
-      project.title,
-      project.description
-    )}
-
-    ${youtube(project.video)}
-
-    <section class="continue">
-      <div>
-        <div class="eyebrow">PROJECT ROADMAP</div>
-        <h2>Follow the process</h2>
-
-        <div class="roadmap-list">
-          ${project.steps.map((step, i) => `
-            <div class="roadmap-item">
-              <span>${String(i + 1).padStart(2, "0")}</span>
-              <strong>${esc(step)}</strong>
+            <div class="certificate-seal">
+              <b>G</b>
+              <span>G WORLD</span>
+              <small>VERIFIED</small>
             </div>
-          `).join("")}
-        </div>
-      </div>
-    </section>
 
-    <section class="practice-panel">
-      <div>
-        <span class="eyebrow">SUBMISSION</span>
-        <h2>Submit when you are ready.</h2>
-        <p>
-          Copy-and-paste submission can be used first. Temporary uploaded
-          files can be reviewed and removed after the review process.
-        </p>
-      </div>
-
-      <button class="primary" data-a="support">
-        NEED HELP?
-      </button>
-    </section>
-
-    ${backButton("projects")}
-  `);
-}
-
-function renderProjectWriter() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "PROJECT WRITER",
-      "Understand your project before writing it.",
-      "Enter your topic and G WORLD will guide you through understanding,
-      planning, researching and presenting the project."
-    )}
-
-    <section class="search-panel">
-      <form id="project-topic-form">
-        <label>
-          Project Topic
-          <input
-            name="topic"
-            required
-            maxlength="200"
-            placeholder="Enter your project topic">
-        </label>
-
-        <button class="primary" type="submit">
-          UNDERSTAND MY TOPIC
-        </button>
-      </form>
-    </section>
-
-    ${youtube(videos.accountingBasics)}
-
-    <section class="doors">
-      <h2>Project Structure</h2>
-
-      <div class="grid">
-        ${[
-          "Understand Your Topic",
-          "Chapter One",
-          "Chapter Two",
-          "Chapter Three",
-          "Chapter Four",
-          "Chapter Five",
-          "References",
-          "Presentation / Defence"
-        ].map((item, i) => `
-          <article>
-            <small>${String(i + 1).padStart(2, "0")}</small>
-            <h3>${esc(item)}</h3>
-            <p>
-              Learn what belongs in this part and how it connects
-              to the rest of the project.
-            </p>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-
-    <section class="doors">
-      <h2>Project Models & Methods</h2>
-
-      <div class="grid">
-        ${[
-          "Descriptive Analysis",
-          "Correlation",
-          "Regression",
-          "ANOVA",
-          "Chi-Square",
-          "Time Series",
-          "Research Design",
-          "Sampling Methods"
-        ].map((item, i) => `
-          <article>
-            <small>MODEL ${i + 1}</small>
-            <h3>${esc(item)}</h3>
-            <p>
-              Understand purpose, variables, assumptions, application,
-              interpretation and reporting.
-            </p>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-
-    ${backButton()}
-  `);
-}
-
-function renderSupport() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "GWard SUPPORT",
-      "Need help? Reach the G WORLD team.",
-      "Tell us what is confusing, what is not working or what you need
-      help understanding."
-    )}
-
-    <section class="search-panel">
-      <form id="support-form">
-        <label>
-          Your message
-          <textarea
-            name="message"
-            rows="6"
-            maxlength="2000"
-            required
-            placeholder="Tell the GWard team what you need help with..."></textarea>
-        </label>
-
-        <button class="primary" type="submit">
-          SEND TO GWard
-        </button>
-      </form>
-    </section>
-
-    <section class="continue">
-      <div>
-        <span class="eyebrow">COURSE SUPPORT</span>
-        <h2>Any challenge? Reach the GWard team.</h2>
-        <p>
-          Your message is stored in your support thread so replies from
-          the team can be shown to you later.
-        </p>
-      </div>
-    </section>
-
-    ${backButton()}
-  `);
-}
-
-function renderAdminEntry() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "G WORLD",
-      "Secure access",
-      "Authorised administrators can continue to the control area."
-    )}
-
-    <section class="search-panel">
-      <form id="admin-form">
-        <label>
-          Admin Email
-          <input
-            name="email"
-            type="email"
-            autocomplete="username"
-            required
-            placeholder="Admin email">
-        </label>
-
-        <label>
-          Admin Code
-          <input
-            name="code"
-            type="password"
-            autocomplete="one-time-code"
-            required
-            maxlength="12"
-            placeholder="Security code">
-        </label>
-
-        <small class="form-error">${esc(state.error)}</small>
-
-        <button class="primary full" type="submit">
-          SECURE ADMIN LOGIN
-        </button>
-      </form>
-    </section>
-
-    ${backButton()}
-  `);
-}
-
-function renderAdmin() {
-  app.innerHTML = `
-    <main class="admin-shell">
-      <header class="admin-header">
-        <div>
-          <div class="eyebrow">G WORLD CONTROL</div>
-          <h1>Admin Dashboard</h1>
-          <p>Manage content, learners, updates and system health.</p>
-        </div>
-
-        <button class="logout-btn" data-a="home">
-          EXIT
-        </button>
-      </header>
-
-      <section class="admin-health">
-        <div>
-          <span class="status-dot"></span>
-          <strong>System operating normally</strong>
-        </div>
-
-        <small>Monitoring is designed to protect free-tier resources.</small>
-      </section>
-
-      <section class="admin-grid">
-        ${[
-          ["Members", "admin-members"],
-          ["Courses", "admin-courses"],
-          ["Skills", "admin-skills"],
-          ["Lessons", "admin-lessons"],
-          ["Videos", "admin-videos"],
-          ["Questions", "admin-questions"],
-          ["Projects", "admin-projects"],
-          ["Project Models", "admin-models"],
-          ["Resources", "admin-resources"],
-          ["Opportunities", "admin-opportunities"],
-          ["Research / Discoveries", "admin-research"],
-          ["AI Content", "admin-ai"],
-          ["Certificates", "admin-certificates"],
-          ["Announcements", "admin-announcements"],
-          ["Information", "admin-information"],
-          ["Payments", "admin-payments"],
-          ["JAMB", "admin-jamb"],
-          ["ICAN / ATS", "admin-ican"],
-          ["GWard Support", "admin-support"],
-          ["Review Queue", "admin-review"],
-          ["Approved Sources", "admin-sources"],
-          ["Daily Updates", "admin-updates"],
-          ["Monitoring", "admin-monitoring"],
-          ["Storage Cleanup", "admin-storage"],
-          ["Import / Export", "admin-import"],
-          ["Settings", "admin-settings"]
-        ].map(([title, action], i) => `
-          <button class="admin-card" data-a="${action}">
-            <small>${String(i + 1).padStart(2, "0")}</small>
-            <strong>${esc(title)}</strong>
-            <span>OPEN →</span>
-          </button>
-        `).join("")}
-      </section>
-
-      <section class="admin-note">
-        <strong>Free-tier protection</strong>
-        <p>
-          Monitoring should use aggregated and sampled information rather
-          than creating a database write for every visitor action.
-        </p>
-      </section>
-    </main>
-  `;
-}
-function renderAdminPage(title, description, type = "content") {
-  const forms = {
-    "admin-videos": `
-      <form id="admin-video-form">
-        <label>
-          Section / Lesson
-          <input name="location" required
-            placeholder="e.g. Tech Skills → Python → Variables">
-        </label>
-
-        <label>
-          Video title
-          <input name="title" required
-            placeholder="Exact YouTube video title">
-        </label>
-
-        <label>
-          YouTube video ID
-          <input name="videoId" required
-            placeholder="Example: cQT33yu9pY8">
-        </label>
-
-        <label>
-          Video purpose
-          <select name="kind">
-            <option value="lesson">Main Lesson</option>
-            <option value="learn-more">Learn More</option>
-            <option value="practice">Practice</option>
-            <option value="orientation">Orientation</option>
-          </select>
-        </label>
-
-        <button class="primary" type="submit">SAVE VIDEO</button>
-      </form>
-    `,
-
-    "admin-questions": `
-      <form id="admin-question-form">
-        <label>
-          Question
-          <textarea name="question" required rows="5"></textarea>
-        </label>
-
-        <label>
-          Subject / Topic
-          <input name="subject" required>
-        </label>
-
-        <label>
-          Question type
-          <select name="type">
-            <option>Multiple Choice</option>
-            <option>True / False</option>
-            <option>Short Answer</option>
-            <option>Coding Challenge</option>
-            <option>Practical Task</option>
-          </select>
-        </label>
-
-        <label>
-          Correct answer / marking guide
-          <textarea name="answer" rows="4"></textarea>
-        </label>
-
-        <button class="primary" type="submit">SAVE QUESTION</button>
-      </form>
-    `,
-
-    "admin-sources": `
-      <form id="admin-source-form">
-        <label>
-          Source name
-          <input name="name" required>
-        </label>
-
-        <label>
-          Source URL
-          <input name="url" type="url" required>
-        </label>
-
-        <label>
-          Category
-          <input name="category" required
-            placeholder="AI, JAMB, ATS, Accounting...">
-        </label>
-
-        <label>
-          Refresh frequency
-          <select name="frequency">
-            <option value="24">Every 24 hours</option>
-            <option value="12">Every 12 hours</option>
-            <option value="6">Every 6 hours</option>
-          </select>
-        </label>
-
-        <button class="primary" type="submit">
-          SAVE APPROVED SOURCE
-        </button>
-      </form>
-    `,
-
-    "admin-updates": `
-      <div class="admin-actions">
-        <button class="primary" data-a="admin-update-now">
-          UPDATE NOW
-        </button>
-
-        <button class="secondary" data-a="admin-pause-updates">
-          PAUSE UPDATES
-        </button>
-
-        <button class="secondary" data-a="admin-review-queue">
-          OPEN REVIEW QUEUE
-        </button>
-      </div>
-
-      <div class="admin-stat-row">
-        <div><small>LAST SUCCESS</small><strong>Admin controlled</strong></div>
-        <div><small>NEXT RUN</small><strong>24-hour cycle</strong></div>
-        <div><small>STATUS</small><strong>Protected</strong></div>
-      </div>
-    `,
-
-    "admin-monitoring": `
-      <div class="monitor-grid">
-        ${[
-          ["Worker Requests", "Provider metric / estimate"],
-          ["API Requests", "Application estimate"],
-          ["D1 Reads", "Application estimate"],
-          ["D1 Writes", "Application estimate"],
-          ["D1 Storage", "Provider metric where available"],
-          ["Bandwidth", "Provider metric where available"],
-          ["Errors", "Application + provider logs"],
-          ["Active Usage", "Application estimate"]
-        ].map(([a, b]) => `
-          <div class="monitor-card">
-            <small>${esc(a)}</small>
-            <strong>Monitoring</strong>
-            <span>${esc(b)}</span>
+            <div class="certificate-sign">
+              <span></span>
+              <small>PROGRAMME DIRECTOR</small>
+            </div>
           </div>
-        `).join("")}
-      </div>
 
-      <div class="monitor-status">
-        <span>🟢</span>
-        <div>
-          <strong>Normal</strong>
-          <p>
-            The system can automatically move toward conservation mode
-            when configured thresholds are approached.
-          </p>
+          <div class="certificate-verify">
+            Scan the verification QR on the issued certificate to verify this achievement.
+          </div>
+
         </div>
-      </div>
-    `,
-
-    "admin-storage": `
-      <div class="cleanup-list">
-        ${[
-          "Temporary project uploads",
-          "Expired temporary files",
-          "Duplicate draft assets",
-          "Old debug records",
-          "Unnecessary generated files"
-        ].map((x, i) => `
-          <label class="cleanup-item">
-            <input type="checkbox" value="${i}">
-            <span>${esc(x)}</span>
-          </label>
-        `).join("")}
-      </div>
-
-      <button class="primary" data-a="cleanup-selected">
-        DELETE SELECTED SAFE ITEMS
-      </button>
-
-      <p class="warning-note">
-        Member identity records, certificate verification records,
-        payment audit records and required support records must not be
-        deleted by automatic cleanup.
-      </p>
-    `,
-
-    "admin-import": `
-      <form id="admin-import-form">
-        <label>
-          Content Package JSON
-          <textarea
-            name="json"
-            rows="16"
-            placeholder='Paste a G WORLD content package here...'></textarea>
-        </label>
-
-        <button class="secondary" type="submit">
-          VALIDATE PACKAGE
-        </button>
-
-        <button class="primary" type="button" data-a="admin-publish-import">
-          PREVIEW / PUBLISH
-        </button>
-      </form>
-    `
-  };
-
-  const body = forms[type] || `
-    <div class="admin-placeholder">
-      <div class="eyebrow">ADMIN AREA</div>
-      <h2>${esc(title)}</h2>
-      <p>${esc(description)}</p>
-
-      <div class="admin-checklist">
-        <div>✓ Create and edit content</div>
-        <div>✓ Attach focused YouTube videos</div>
-        <div>✓ Save as draft</div>
-        <div>✓ Preview before publishing</div>
-        <div>✓ Publish without editing learner code</div>
       </div>
     </div>
   `;
+}
 
-  app.innerHTML = `
-    <main class="admin-shell">
-      <header class="admin-header compact">
-        <div>
-          <div class="eyebrow">G WORLD CONTROL</div>
-          <h1>${esc(title)}</h1>
-          <p>${esc(description)}</p>
-        </div>
+function commonNav(back = true) {
+  return `
+    ${back && state.history.length ? `
+      <button class="link page-back" data-a="back">← Back</button>
+    ` : ""}
 
-        <button class="secondary" data-a="admin">
-          DASHBOARD
-        </button>
-      </header>
+    <nav>
+      <div class="mini">
+        <b>G</b> G WORLD
+      </div>
 
-      <section class="admin-panel">
-        ${body}
-      </section>
-    </main>
+      <div class="nav-user">
+        <span>${esc(state.member?.name || "")}</span>
+        <button class="logout-btn" data-a="logout">LOG OUT</button>
+      </div>
+    </nav>
   `;
 }
 
-function renderPythonPlayground() {
-  app.innerHTML = shell(`
-    ${pageHero(
-      "CODE PLAYGROUND",
-      "Write Python and see what happens.",
-      "Your browser runs the practice environment. Routine coding practice
-      does not need a database request."
-    )}
+function supportButton() {
+  return `
+    <section class="support-strip">
+      <div>
+        <div class="eyebrow">NEED HELP?</div>
+        <strong>Having a challenge?</strong>
+        <p>Reach out to the G WORLD Team.</p>
+      </div>
 
-    <section class="code-playground">
-      <label>
-        Python code
-        <textarea id="python-code" rows="12">name = "G WORLD"
-print("Hello", name)</textarea>
-      </label>
-
-      <button class="primary" data-a="run-python">
-        RUN CODE
+      <button class="secondary" data-a="support">
+        CONTACT G WORLD TEAM
       </button>
-
-      <pre id="python-output">Ready.</pre>
     </section>
-
-    ${youtube(videos.pythonFull)}
-
-    ${backButton("skill")}
-  `);
+  `;
 }
 
 function render() {
+
   if (state.screen === "splash") {
     app.innerHTML = `
-      <main class="intro">
+      <main class="intro" aria-label="Entering G WORLD">
         <div class="intro-glow"></div>
+
         <img
           class="master-logo"
           src="/assets/gworld-master-logo.png"
-          alt="G WORLD — Discover What You Need to Know.">
+          alt="G WORLD — Discover What You Need to Know."
+        >
+
         <div class="intro-line"></div>
         <div class="intro-status">ENTERING G WORLD</div>
       </main>
@@ -2601,198 +245,3216 @@ function render() {
     return;
   }
 
-  if (state.screen === "entry") return renderEntry();
-  if (state.screen === "onboard") return renderOnboard();
-  if (state.screen === "existing") return renderExisting();
-  if (state.screen === "card") return renderCard();
-  if (state.screen === "home") return renderHome();
-  if (state.screen === "courses") return renderCourses();
+  if (state.screen === "entry") {
+    app.innerHTML = `
+      <main class="center enter-screen">
+        <section class="panel">
 
-  if (state.screen === "course") {
-    const course = universityCourses.find(
-      x => x.id === state.selectedCourse
-    );
-    return renderCourse(course);
+          <div class="form-brand">
+            <span>G</span><b>G WORLD</b>
+          </div>
+
+          <div class="eyebrow">WELCOME TO G WORLD</div>
+
+          <h1>How would you like to enter?</h1>
+
+          <p>
+            Start a new G WORLD journey or continue with your existing
+            G WORLD account.
+          </p>
+
+          <div class="entry-options">
+
+            <button class="primary full" data-a="new-member">
+              NEW MEMBER
+            </button>
+
+            <button class="secondary full" data-a="existing-member">
+              EXISTING MEMBER
+            </button>
+
+          </div>
+
+          <div class="form-footnote">
+            Your G WORLD ID stays with you as you continue learning.
+          </div>
+
+        </section>
+      </main>
+    `;
+    return;
   }
 
-  if (state.screen === "lesson") {
-    const course = universityCourses.find(
-      x => x.id === state.selectedCourse
-    );
+  if (state.screen === "onboard") {
+    app.innerHTML = `
+      <main class="center enter-screen">
+        <section class="panel">
 
-    const lesson = course?.lessons.find(
-      x => x.id === state.selectedLesson
-    );
+          <div class="form-brand">
+            <span>G</span><b>G WORLD</b>
+          </div>
 
-    return renderLesson(course, lesson);
+          <div class="eyebrow">NEW MEMBER</div>
+
+          <h1>Start your journey.</h1>
+
+          <p>
+            Enter your basic details. Your G WORLD ID and digital
+            member card will be created automatically.
+          </p>
+
+          <form id="f" novalidate>
+
+            <label>
+              Full Name
+              <input
+                name="name"
+                required
+                autocomplete="name"
+                placeholder="Your full name"
+                maxlength="80"
+              >
+              <small class="field-error" data-error="name"></small>
+            </label>
+
+            <label>
+              Phone Number
+              <input
+                name="phone"
+                required
+                autocomplete="tel"
+                placeholder="Your phone number"
+                maxlength="30"
+              >
+              <small class="field-error" data-error="phone"></small>
+            </label>
+
+            <label>
+              Email <small>(optional)</small>
+              <input
+                name="email"
+                type="email"
+                autocomplete="email"
+                placeholder="you@example.com"
+                maxlength="120"
+              >
+              <small class="field-error" data-error="email"></small>
+            </label>
+
+            <small class="form-error">
+              ${esc(state.error)}
+            </small>
+
+            <button
+              class="primary full"
+              type="submit"
+              ${state.loading ? "disabled" : ""}
+            >
+              ${state.loading
+                ? "CREATING YOUR G WORLD ID…"
+                : "CREATE MY G WORLD ID"}
+            </button>
+
+          </form>
+
+          <button class="link" data-a="back-entry">
+            ← Back
+          </button>
+
+          <small class="privacy-note">
+            Your G WORLD ID is a platform identity.
+            It is not a government ID or password.
+          </small>
+
+        </section>
+      </main>
+    `;
+    return;
   }
 
-  if (state.screen === "tech-skills") return renderTechSkills();
+  if (state.screen === "existing") {
+    app.innerHTML = `
+      <main class="center enter-screen">
+        <section class="panel">
 
-  if (state.screen === "skill") {
-    const skill = techSkills.find(
-      x => x.id === state.selectedSection
-    );
+          <div class="form-brand">
+            <span>G</span><b>G WORLD</b>
+          </div>
 
-    return renderSkill(skill);
+          <div class="eyebrow">EXISTING MEMBER</div>
+
+          <h1>Welcome back.</h1>
+
+          <p>
+            Enter the details connected to your G WORLD account.
+          </p>
+
+          <form id="existing-form" novalidate>
+
+            <label>
+              Full Name
+              <input
+                name="name"
+                required
+                autocomplete="name"
+                placeholder="Your full name"
+                maxlength="80"
+              >
+              <small class="field-error"
+                data-error="existing-name"></small>
+            </label>
+
+            <label>
+              Email
+              <input
+                name="email"
+                type="email"
+                required
+                autocomplete="email"
+                placeholder="you@example.com"
+                maxlength="120"
+              >
+              <small class="field-error"
+                data-error="existing-email"></small>
+            </label>
+
+            <small class="form-error">
+              ${esc(state.error)}
+            </small>
+
+            <button
+              class="primary full"
+              type="submit"
+              ${state.loading ? "disabled" : ""}
+            >
+              ${state.loading
+                ? "ENTERING G WORLD…"
+                : "ENTER G WORLD"}
+            </button>
+
+          </form>
+
+          <button class="link" data-a="back-entry">
+            ← Back
+          </button>
+
+          <div class="form-footnote">
+            Your access is checked by the G WORLD service.
+          </div>
+
+        </section>
+      </main>
+    `;
+    return;
   }
 
-  if (state.screen === "skill-lesson") {
-    const skill = techSkills.find(
-      x => x.id === state.selectedSection
-    );
+  if (state.screen === "card") {
+    const member = state.member;
 
-    const lesson = skill?.lessons.find(
-      x => x.id === state.selectedLesson
-    );
+    app.innerHTML = `
+      <main class="center">
 
-    return renderLesson(
-      {
-        title: skill?.title,
-        description: skill?.description
+        <div class="card">
+
+          <header>
+            <div class="mini">
+              <b>G</b>
+
+              <span>
+                <strong>G WORLD</strong>
+                <small>Discover What You Need to Know.</small>
+              </span>
+            </div>
+          </header>
+
+          <section>
+
+            <em>WELCOME TO G WORLD</em>
+
+            <h2>${esc(member.name)}</h2>
+
+            <div class="info">
+
+              <div>
+                <small>PHONE</small>
+                <strong>${esc(member.phone)}</strong>
+              </div>
+
+              <div>
+                <small>STATUS</small>
+                <strong>${esc(member.status || "IN TRAINING")}</strong>
+              </div>
+
+              <div>
+                <small>G WORLD ID</small>
+                <strong>${esc(member.gworldId)}</strong>
+              </div>
+
+            </div>
+
+            <div class="qr">
+              <canvas id="member-qr"></canvas>
+
+              <small>
+                SCAN TO VERIFY<br>
+                THIS G WORLD MEMBER
+              </small>
+            </div>
+
+          </section>
+
+          <footer>
+            <b>Welcome to G WORLD!</b>
+            <span>Your learning journey starts here.</span>
+            <span>Stay committed. Keep learning. Grow with G WORLD.</span>
+          </footer>
+
+        </div>
+
+        <button class="primary" data-a="home">
+          ENTER G WORLD
+        </button>
+
+        <button class="link" data-a="reset">
+          Start over
+        </button>
+
+      </main>
+    `;
+
+    generateMemberQR();
+    return;
+  }
+
+  if (state.screen === "home") {
+    const m = state.member;
+
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav(false)}
+
+        <section class="hero">
+
+          <div class="eyebrow">G WORLD</div>
+
+          <h1>Discover what you need to know.</h1>
+
+          <p>
+            Useful knowledge. Clear learning. Practical growth.
+          </p>
+
+        </section>
+
+        <section class="continue">
+
+          <div>
+            <div class="eyebrow">YOUR G WORLD</div>
+
+            <h2>Welcome back, ${esc(m.name)}.</h2>
+
+            <p>
+              Your learning journey is ready for the next step.
+            </p>
+          </div>
+
+          <code>${esc(m.gworldId)}</code>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Explore G WORLD</h2>
+
+          <div class="grid">
+
+            <article data-a="courses">
+              <small>01</small>
+              <h3>Courses</h3>
+              <p>
+                Structured academic and professional learning.
+              </p>
+            </article>
+
+            <article data-a="tech-skills">
+              <small>02</small>
+              <h3>Tech Skills</h3>
+              <p>
+                Learn practical digital and technology skills.
+              </p>
+            </article>
+
+            <article data-a="ai-tech">
+              <small>03</small>
+              <h3>AI & Technology</h3>
+              <p>
+                Keep up with important technology developments.
+              </p>
+            </article>
+
+            <article data-a="jamb">
+              <small>04</small>
+              <h3>JAMB</h3>
+              <p>
+                JAMB information, syllabus, CBT and subject combinations.
+              </p>
+            </article>
+
+            <article data-a="opportunities">
+              <small>05</small>
+              <h3>Opportunities</h3>
+              <p>
+                Discover useful opportunities and pathways.
+              </p>
+            </article>
+
+            <article data-a="research">
+              <small>06</small>
+              <h3>Discoveries & Research</h3>
+              <p>
+                Research, discoveries and important developments.
+              </p>
+            </article>
+
+            <article data-a="project-writer">
+              <small>07</small>
+              <h3>Project Writer</h3>
+              <p>
+                Understand and build your academic project step by step.
+              </p>
+            </article>
+
+            <article data-a="academic">
+              <small>08</small>
+              <h3>Academic Resources</h3>
+              <p>
+                Useful academic resources and study support.
+              </p>
+            </article>
+
+            <article data-a="work-ready">
+              <small>09</small>
+              <h3>Work Ready</h3>
+              <p>
+                Learn the skills, habits and knowledge needed for work.
+              </p>
+            </article>
+
+            <article data-a="support">
+              <small>10</small>
+              <h3>G WORLD Support</h3>
+              <p>
+                Reach out when you need help.
+              </p>
+            </article>
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "courses") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+          <div class="eyebrow">COURSES</div>
+
+          <h1>Learn something that moves you forward.</h1>
+
+          <p>
+            Structured learning journeys that help you understand,
+            practise, apply, build and verify what you know.
+          </p>
+        </section>
+
+        <section class="doors">
+
+          <h2>Available Courses</h2>
+
+          <div class="grid">
+
+            <article data-a="course-accounting">
+              <small>01</small>
+              <h3>Accounting</h3>
+              <p>
+                Understand accounting from the foundations through
+                practical learning and application.
+              </p>
+            </article>
+
+            <article data-a="course-economics">
+              <small>02</small>
+              <h3>Economics</h3>
+              <p>
+                Build a clear understanding of economic principles.
+              </p>
+            </article>
+
+            <article data-a="course-business">
+              <small>03</small>
+              <h3>Business Administration</h3>
+              <p>
+                Learn the principles behind organisations and business.
+              </p>
+            </article>
+
+            <article data-a="course-finance">
+              <small>04</small>
+              <h3>Finance</h3>
+              <p>
+                Learn financial concepts and practical applications.
+              </p>
+            </article>
+
+            <article data-a="course-marketing">
+              <small>05</small>
+              <h3>Marketing</h3>
+              <p>
+                Understand customers, markets and marketing practice.
+              </p>
+            </article>
+
+            <article data-a="course-research">
+              <small>06</small>
+              <h3>Research Methodology</h3>
+              <p>
+                Learn how to understand, design and conduct research.
+              </p>
+            </article>
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen.startsWith("course-")) {
+    const courseMap = {
+      "course-accounting": {
+        title: "Accounting",
+        description:
+          "Build your accounting knowledge from the foundation through practical understanding.",
+        modules: [
+          "Introduction to Accounting",
+          "Accounting Concepts and Principles",
+          "Double Entry",
+          "Books of Original Entry",
+          "Ledger Accounts",
+          "Trial Balance",
+          "Financial Statements",
+          "Adjustments",
+          "Analysis and Interpretation",
+          "Practical Accounting Applications"
+        ]
       },
-      lesson
-    );
-  }
 
-  if (state.screen === "information") return renderInformation();
+      "course-economics": {
+        title: "Economics",
+        description:
+          "Understand economic ideas and how they apply to real-world decisions.",
+        modules: [
+          "Introduction to Economics",
+          "Demand and Supply",
+          "Market Structures",
+          "National Income",
+          "Inflation",
+          "Unemployment",
+          "Money and Banking",
+          "Fiscal Policy",
+          "Monetary Policy",
+          "Development Economics"
+        ]
+      },
 
-  if (state.screen === "information-section") {
-    const section = informationSections.find(
-      x => x.id === state.selectedSection
-    );
+      "course-business": {
+        title: "Business Administration",
+        description:
+          "Understand organisations, management and practical business operations.",
+        modules: [
+          "Introduction to Business",
+          "Management",
+          "Planning",
+          "Organising",
+          "Leadership",
+          "Human Resources",
+          "Operations",
+          "Business Strategy",
+          "Decision Making",
+          "Business Ethics"
+        ]
+      },
 
-    return renderInformationSection(section);
-  }
+      "course-finance": {
+        title: "Finance",
+        description:
+          "Learn how financial decisions are understood, analysed and applied.",
+        modules: [
+          "Introduction to Finance",
+          "Financial Management",
+          "Time Value of Money",
+          "Risk and Return",
+          "Investment Decisions",
+          "Working Capital",
+          "Capital Structure",
+          "Financial Analysis",
+          "Financial Planning",
+          "Practical Finance"
+        ]
+      },
 
-  if (state.screen === "information-item") {
-    const section = informationSections.find(
-      x => x.id === state.selectedSection
-    );
+      "course-marketing": {
+        title: "Marketing",
+        description:
+          "Understand customers, markets, communication and marketing decisions.",
+        modules: [
+          "Introduction to Marketing",
+          "Customer Needs",
+          "Market Research",
+          "Segmentation",
+          "Targeting",
+          "Positioning",
+          "Marketing Mix",
+          "Digital Marketing",
+          "Customer Relationship",
+          "Marketing Strategy"
+        ]
+      },
 
-    const item = section?.items[state.selectedLesson];
-
-    return renderInformationItem(section, item);
-  }
-
-  if (state.screen === "jamb") return renderJamb();
-  if (state.screen === "jamb-news") return renderJambNews();
-  if (state.screen === "jamb-syllabus") return renderJambSyllabus();
-  if (state.screen === "jamb-cbt") return renderJambCBT();
-  if (state.screen === "jamb-combinations") return renderJambCombinations();
-  if (state.screen === "jamb-past") return renderJambPast();
-
-  if (state.screen === "jamb-stream") {
-    return renderJambStream(state.selectedSection);
-  }
-
-  if (state.screen === "ican") return renderIcan();
-  if (state.screen === "ats-study") return renderIcanStudy();
-  if (state.screen === "ats-past") return renderIcanPast();
-  if (state.screen === "ats-mixed") return renderIcanMixed();
-  if (state.screen === "ats-news") return renderIcanNews();
-
-  if (state.screen === "work-ready") return renderWorkReady();
-
-  if (state.screen === "work-course") {
-    return renderWorkCourse(
-      workReady[Number(state.selectedLesson)]
-    );
-  }
-
-  if (state.screen === "projects") return renderProjects();
-
-  if (state.screen === "project") {
-    return renderProject(
-      projects[Number(state.selectedLesson)]
-    );
-  }
-
-  if (state.screen === "project-writer") return renderProjectWriter();
-  if (state.screen === "support") return renderSupport();
-
-  if (state.screen === "python-playground") {
-    return renderPythonPlayground();
-  }
-
-  if (state.screen === "admin-login") return renderAdminEntry();
-  if (state.screen === "admin") return renderAdmin();
-
-  if (state.screen.startsWith("admin-")) {
-    const names = {
-      "admin-members": ["Members", "Manage member records and account status."],
-      "admin-courses": ["Courses", "Create and manage university courses."],
-      "admin-skills": ["Skills", "Manage technology and digital skills."],
-      "admin-lessons": ["Lessons", "Create structured lessons."],
-      "admin-videos": ["Videos", "Attach exact YouTube videos to lessons."],
-      "admin-questions": ["Questions", "Manage learning and CBT questions."],
-      "admin-projects": ["Projects", "Manage practical projects."],
-      "admin-models": ["Project Models", "Manage research methods."],
-      "admin-resources": ["Resources", "Manage useful learning resources."],
-      "admin-opportunities": ["Opportunities", "Manage reviewed opportunities."],
-      "admin-research": ["Research / Discoveries", "Manage discoveries."],
-      "admin-ai": ["AI Content", "Manage AI learning information."],
-      "admin-certificates": ["Certificates", "Manage certificate eligibility and verification."],
-      "admin-announcements": ["Announcements", "Publish important announcements."],
-      "admin-information": ["Information", "Manage current and existing information."],
-      "admin-payments": ["Payments", "Review manual payment submissions."],
-      "admin-jamb": ["JAMB", "Manage syllabus, questions and updates."],
-      "admin-ican": ["ICAN / ATS", "Manage ATS learning materials and questions."],
-      "admin-support": ["GWard Support", "Review learner messages and replies."],
-      "admin-review": ["Review Queue", "Review information before publication."],
-      "admin-sources": ["Approved Sources", "Manage trusted information sources."],
-      "admin-updates": ["Daily Updates", "Control the daily information cycle."],
-      "admin-monitoring": ["Monitoring", "Monitor resource usage and free-tier protection."],
-      "admin-storage": ["Storage Cleanup", "Safely remove unnecessary temporary information."],
-      "admin-import": ["Import / Export", "Move structured G WORLD content without editing code."],
-      "admin-settings": ["Settings", "Manage platform settings."]
+      "course-research": {
+        title: "Research Methodology",
+        description:
+          "Learn how to move from a research problem to a defensible research project.",
+        modules: [
+          "Understanding Research",
+          "Research Problems",
+          "Objectives and Questions",
+          "Literature Review",
+          "Research Design",
+          "Population and Sampling",
+          "Data Collection",
+          "Data Analysis",
+          "Results and Discussion",
+          "Research Reporting"
+        ]
+      }
     };
 
-    const [title, description] =
-      names[state.screen] || ["Admin", "G WORLD administration."];
+    const course = courseMap[state.screen] || courseMap["course-accounting"];
+    state.selectedCourse = course;
 
-    return renderAdminPage(title, description, state.screen);
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">COURSE</div>
+
+          <h1>${esc(course.title)}</h1>
+
+          <p>${esc(course.description)}</p>
+
+        </section>
+
+        <section class="continue">
+
+          <div>
+            <div class="eyebrow">ROADMAP</div>
+
+            <h2>What you will learn</h2>
+
+            <p>
+              Explore the roadmap before deciding whether to unlock
+              the full learning experience.
+            </p>
+          </div>
+
+          <strong>${course.modules.length} modules</strong>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Learning Roadmap</h2>
+
+          <div class="grid">
+
+            ${course.modules.map((module, index) => `
+              <article>
+                <small>${String(index + 1).padStart(2, "0")}</small>
+                <h3>${esc(module)}</h3>
+                <p>
+                  Learn → Understand → Practise → Apply.
+                </p>
+              </article>
+            `).join("")}
+
+          </div>
+
+        </section>
+
+        <section class="payment-preview">
+
+          <div class="eyebrow">FULL ACCESS</div>
+
+          <h2>Unlock the complete ${esc(course.title)} learning journey.</h2>
+
+          <p>
+            Your one-time G WORLD access includes structured lessons,
+            practice, assessments, projects and certificate eligibility
+            after completion and review.
+          </p>
+
+          <div class="price">${naira(PAYMENT.amount)}</div>
+
+          <small>ONE-TIME PAYMENT</small>
+
+          <button class="primary full" data-a="payment">
+            MAKE PAYMENT
+          </button>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "tech-skills") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+          <div class="eyebrow">TECH SKILLS</div>
+
+          <h1>Build practical skills.</h1>
+
+          <p>
+            Learn technology skills through structured lessons,
+            practice and projects.
+          </p>
+        </section>
+
+        <section class="doors">
+
+          <h2>Skills</h2>
+
+          <div class="grid">
+
+            <article data-a="python-course">
+              <small>01</small>
+              <h3>Python</h3>
+              <p>
+                Learn Python from the foundation to practical projects.
+              </p>
+            </article>
+
+            <article>
+              <small>02</small>
+              <h3>Excel</h3>
+              <p>Practical spreadsheet skills.</p>
+            </article>
+
+            <article>
+              <small>03</small>
+              <h3>SQL</h3>
+              <p>Understand and work with databases.</p>
+            </article>
+
+            <article>
+              <small>04</small>
+              <h3>Data Analysis</h3>
+              <p>Turn information into useful insights.</p>
+            </article>
+
+            <article>
+              <small>05</small>
+              <h3>Power BI</h3>
+              <p>Build useful data reports and dashboards.</p>
+            </article>
+
+            <article>
+              <small>06</small>
+              <h3>Web Development</h3>
+              <p>Understand how websites are built.</p>
+            </article>
+
+            <article>
+              <small>07</small>
+              <h3>JavaScript</h3>
+              <p>Build interactive web experiences.</p>
+            </article>
+
+            <article>
+              <small>08</small>
+              <h3>Git & GitHub</h3>
+              <p>Understand version control and collaboration.</p>
+            </article>
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "python-course") {
+    const lessons = [
+      "Introduction to Python",
+      "Python Basics",
+      "Variables",
+      "Data Types",
+      "Strings",
+      "Numbers & Operators",
+      "Input",
+      "Conditional Statements",
+      "Comparison & Logical Operators",
+      "Loops",
+      "Lists",
+      "Tuples",
+      "Dictionaries",
+      "Sets",
+      "Functions",
+      "Modules",
+      "Error Handling",
+      "File Handling",
+      "Object-Oriented Programming",
+      "Working with Libraries",
+      "Practical Python Projects"
+    ];
+
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">TECH SKILLS · PYTHON</div>
+
+          <h1>Python Foundations</h1>
+
+          <p>
+            Know → Understand → Watch → Practise → Build → Verify.
+          </p>
+
+        </section>
+
+        <section class="continue">
+
+          <div>
+            <div class="eyebrow">ROADMAP</div>
+            <h2>21 lessons + practical projects</h2>
+            <p>
+              Work through Python one step at a time.
+            </p>
+          </div>
+
+          <button class="primary" data-a="payment">
+            UNLOCK FOR ${naira(3000)}
+          </button>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Python Roadmap</h2>
+
+          <div class="grid">
+
+            ${lessons.map((lesson, index) => `
+              <article
+                ${index === 0 ? 'data-a="python-intro"' : ""}
+              >
+                <small>${String(index + 1).padStart(2, "0")}</small>
+                <h3>${esc(lesson)}</h3>
+                <p>
+                  ${index === 0
+                    ? "Begin here."
+                    : "Available inside the complete learning journey."}
+                </p>
+              </article>
+            `).join("")}
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "python-intro") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">
+            PYTHON FOUNDATIONS · LESSON 1
+          </div>
+
+          <h1>Introduction to Python</h1>
+
+          <p>
+            Before writing code, understand what Python is,
+            where it is used and why people use it.
+          </p>
+
+        </section>
+
+        <section class="continue">
+
+          <div>
+
+            <div class="eyebrow">KNOW</div>
+
+            <h2>What is Python?</h2>
+
+            <p>
+              Python is a programming language used to give instructions
+              to computers in a readable and practical way.
+            </p>
+
+            <p>
+              It is used in automation, data analysis, research,
+              artificial intelligence, software development and many
+              other areas.
+            </p>
+
+          </div>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Understand Before You Practise</h2>
+
+          <div class="grid">
+
+            <article>
+              <small>01</small>
+              <h3>Python is a language</h3>
+              <p>
+                Programmers use Python to communicate instructions
+                to computers.
+              </p>
+            </article>
+
+            <article>
+              <small>02</small>
+              <h3>Python is readable</h3>
+              <p>
+                Its syntax is designed to be relatively easy to read.
+              </p>
+            </article>
+
+            <article>
+              <small>03</small>
+              <h3>Python can build things</h3>
+              <p>
+                Python can be used to automate tasks, analyse data
+                and build useful programs.
+              </p>
+            </article>
+
+          </div>
+
+        </section>
+
+        <section class="video-card">
+
+          <div class="eyebrow">WATCH</div>
+
+          <h2>Focused lesson video</h2>
+
+          <div class="video-frame">
+            <iframe
+              src="https://www.youtube.com/embed/cQT33yu9pY8"
+              title="Python Variables lesson"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write;
+              encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen>
+            </iframe>
+          </div>
+
+          <small>
+            Video opens inside G WORLD. A longer video can be provided
+            separately under Learn More.
+          </small>
+
+        </section>
+
+        <section class="continue">
+
+          <div>
+            <div class="eyebrow">PRACTICE</div>
+
+            <h2>Ready to check your understanding?</h2>
+
+            <p>
+              Take the first practice question.
+            </p>
+          </div>
+
+          <button class="primary" data-a="python-practice">
+            CONTINUE
+          </button>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "python-practice") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">
+            PYTHON · CHECK YOUR UNDERSTANDING
+          </div>
+
+          <h1>Let's see what you understand.</h1>
+
+          <p>
+            There is no pressure. Think carefully and choose the answer
+            that best fits what you learned.
+          </p>
+
+        </section>
+
+        <section class="continue">
+
+          <div>
+
+            <div class="eyebrow">QUESTION 1</div>
+
+            <h2>What is Python?</h2>
+
+            <p>
+              Choose the answer that best explains Python.
+            </p>
+
+          </div>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article data-a="python-answer-wrong">
+              <h3>A</h3>
+              <p>A type of computer hardware.</p>
+            </article>
+
+            <article data-a="python-answer-correct">
+              <h3>B</h3>
+              <p>
+                A programming language used to give instructions
+                to a computer.
+              </p>
+            </article>
+
+            <article data-a="python-answer-wrong">
+              <h3>C</h3>
+              <p>A social media platform.</p>
+            </article>
+
+            <article data-a="python-answer-wrong">
+              <h3>D</h3>
+              <p>An operating system.</p>
+            </article>
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "ai-tech") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">AI & TECHNOLOGY</div>
+
+          <h1>What is happening now?</h1>
+
+          <p>
+            Important technology information is reviewed and updated
+            regularly so G WORLD does not remain static.
+          </p>
+
+        </section>
+
+        <section class="continue">
+
+          <div>
+            <div class="eyebrow">NEW UPDATES</div>
+            <h2>Latest reviewed information</h2>
+            <p>
+              New approved information appears here first.
+            </p>
+          </div>
+
+          <span class="status-pill">UPDATED REGULARLY</span>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Existing Information</h2>
+
+          <div class="grid">
+
+            <article>
+              <small>01</small>
+              <h3>AI Tools</h3>
+              <p>Useful tools and what they are designed to do.</p>
+            </article>
+
+            <article>
+              <small>02</small>
+              <h3>AI Research</h3>
+              <p>Important developments and research.</p>
+            </article>
+
+            <article>
+              <small>03</small>
+              <h3>Technology</h3>
+              <p>Important technology developments.</p>
+            </article>
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "jamb") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">JAMB</div>
+
+          <h1>Your JAMB learning and information centre.</h1>
+
+          <p>
+            Current information, syllabus, CBT practice and
+            subject-combination guidance in one place.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article data-a="jamb-information">
+              <small>01</small>
+              <h3>JAMB Information</h3>
+              <p>
+                Important JAMB information and updates.
+              </p>
+            </article>
+
+            <article data-a="jamb-news">
+              <small>02</small>
+              <h3>JAMB News</h3>
+              <p>
+                New reviewed JAMB-related developments.
+              </p>
+            </article>
+
+            <article data-a="jamb-syllabus">
+              <small>03</small>
+              <h3>JAMB Syllabus</h3>
+              <p>
+                Subjects, topics and learning guidance.
+              </p>
+            </article>
+
+            <article data-a="jamb-cbt">
+              <small>04</small>
+              <h3>JAMB CBT</h3>
+              <p>
+                Practice questions arranged by subject group.
+              </p>
+            </article>
+
+            <article data-a="jamb-combinations">
+              <small>05</small>
+              <h3>Subject Combination</h3>
+              <p>
+                Find current subject requirements by course.
+              </p>
+            </article>
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (
+    state.screen === "jamb-information" ||
+    state.screen === "jamb-news"
+  ) {
+    const title =
+      state.screen === "jamb-information"
+        ? "JAMB Information"
+        : "JAMB News";
+
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">JAMB</div>
+
+          <h1>${title}</h1>
+
+          <p>
+            New approved information appears under New Updates.
+            After the freshness period it moves into Existing Information.
+          </p>
+
+        </section>
+
+        <section class="continue">
+
+          <div>
+            <div class="eyebrow">NEW UPDATES</div>
+            <h2>New information</h2>
+            <p>
+              Current reviewed information will appear here.
+            </p>
+          </div>
+
+          <span class="status-pill">NEW</span>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Existing Information</h2>
+
+          <div class="grid">
+
+            <article>
+              <small>01</small>
+              <h3>Previously reviewed information</h3>
+              <p>
+                Older information remains available instead of
+                disappearing when newer information arrives.
+              </p>
+            </article>
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "jamb-syllabus") {
+    const subjects = [
+      "English Language",
+      "Mathematics",
+      "Physics",
+      "Chemistry",
+      "Biology",
+      "Economics",
+      "Government",
+      "Commerce",
+      "Accounting",
+      "Literature in English",
+      "Agricultural Science",
+      "Geography",
+      "CRS",
+      "IRS"
+    ];
+
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">JAMB SYLLABUS</div>
+
+          <h1>Study from the syllabus.</h1>
+
+          <p>
+            Subject topics can be updated centrally by the G WORLD
+            administrator when the official syllabus changes.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Subjects</h2>
+
+          <div class="grid">
+
+            ${subjects.map((subject, index) => `
+              <article>
+                <small>${String(index + 1).padStart(2, "0")}</small>
+                <h3>${esc(subject)}</h3>
+                <p>
+                  View syllabus topics and study guidance.
+                </p>
+              </article>
+            `).join("")}
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "jamb-cbt") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">JAMB CBT</div>
+
+          <h1>Choose your practice area.</h1>
+
+          <p>
+            G WORLD can use an approved question bank to generate
+            different practice sets without calling AI for every student.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article data-a="jamb-cbt-science">
+              <small>01</small>
+              <h3>Science</h3>
+              <p>
+                Science-oriented JAMB practice.
+              </p>
+            </article>
+
+            <article data-a="jamb-cbt-commercial">
+              <small>02</small>
+              <h3>Commercial</h3>
+              <p>
+                Commercial-oriented JAMB practice.
+              </p>
+            </article>
+
+            <article data-a="jamb-cbt-arts">
+              <small>03</small>
+              <h3>Arts</h3>
+              <p>
+                Arts-oriented JAMB practice.
+              </p>
+            </article>
+
+            <article data-a="jamb-cbt-general">
+              <small>04</small>
+              <h3>Other Subjects</h3>
+              <p>
+                Other approved subject practice.
+              </p>
+            </article>
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (
+    state.screen === "jamb-cbt-science" ||
+    state.screen === "jamb-cbt-commercial" ||
+    state.screen === "jamb-cbt-arts" ||
+    state.screen === "jamb-cbt-general"
+  ) {
+    const labels = {
+      "jamb-cbt-science": "SCIENCE",
+      "jamb-cbt-commercial": "COMMERCIAL",
+      "jamb-cbt-arts": "ARTS",
+      "jamb-cbt-general": "OTHER SUBJECTS"
+    };
+
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">JAMB CBT · ${labels[state.screen]}</div>
+
+          <h1>Choose your practice.</h1>
+
+          <p>
+            Questions can be generated from the approved G WORLD
+            question bank.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article data-a="cbt-start-10">
+              <small>01</small>
+              <h3>10 Questions</h3>
+              <p>Quick practice.</p>
+            </article>
+
+            <article data-a="cbt-start-20">
+              <small>02</small>
+              <h3>20 Questions</h3>
+              <p>Standard practice.</p>
+            </article>
+
+            <article data-a="cbt-start-40">
+              <small>03</small>
+              <h3>40 Questions</h3>
+              <p>Extended practice.</p>
+            </article>
+
+            <article data-a="cbt-start-full">
+              <small>04</small>
+              <h3>Full CBT</h3>
+              <p>Long-form practice.</p>
+            </article>
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "jamb-combinations") {
+    const courses = [
+      "Accounting",
+      "Medicine and Surgery",
+      "Computer Science",
+      "Economics",
+      "Law",
+      "Mass Communication",
+      "Business Administration",
+      "Engineering",
+      "Nursing",
+      "Pharmacy",
+      "Political Science",
+      "Statistics",
+      "Mathematics",
+      "Agriculture",
+      "Education",
+      "Architecture"
+    ];
+
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">SUBJECT COMBINATION</div>
+
+          <h1>Find your course.</h1>
+
+          <p>
+            Search or select a course to view its currently approved
+            subject combination.
+          </p>
+
+        </section>
+
+        <section class="panel">
+
+          <label>
+            Search course
+            <input
+              id="course-search"
+              placeholder="e.g. Accounting"
+              autocomplete="off"
+            >
+          </label>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Courses</h2>
+
+          <div class="grid" id="combination-grid">
+
+            ${courses.map((course, index) => `
+              <article data-course-combination="${esc(course)}">
+                <small>${String(index + 1).padStart(2, "0")}</small>
+                <h3>${esc(course)}</h3>
+                <p>
+                  View current subject combination.
+                </p>
+              </article>
+            `).join("")}
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "combination-result") {
+    const course = state.selectedCourse || "Selected Course";
+
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">SUBJECT COMBINATION</div>
+
+          <h1>${esc(course)}</h1>
+
+          <p>
+            Current information is maintained by the G WORLD
+            administrator and reviewed against approved sources.
+          </p>
+
+        </section>
+
+        <section class="continue">
+
+          <div>
+            <div class="eyebrow">CURRENT RECORD</div>
+
+            <h2>Required subjects</h2>
+
+            <p>
+              The exact current combination will be displayed from
+              the approved G WORLD information record.
+            </p>
+          </div>
+
+          <span class="status-pill">LAST VERIFIED</span>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article>
+              <small>01</small>
+              <h3>Subject 1</h3>
+              <p>Current approved requirement.</p>
+            </article>
+
+            <article>
+              <small>02</small>
+              <h3>Subject 2</h3>
+              <p>Current approved requirement.</p>
+            </article>
+
+            <article>
+              <small>03</small>
+              <h3>Subject 3</h3>
+              <p>Current approved requirement.</p>
+            </article>
+
+            <article>
+              <small>04</small>
+              <h3>Subject 4</h3>
+              <p>Where applicable.</p>
+            </article>
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "work-ready") {
+    const courses = [
+      ["Quality Ownership", "Understand ownership of quality in the workplace."],
+      ["Customer Service", "Learn how to serve customers professionally."],
+      ["Work Ethics", "Understand professional behaviour and responsibility."],
+      ["Work-Life Balance", "Build healthier and more sustainable work habits."],
+      ["Communication at Work", "Communicate clearly and professionally."],
+      ["Teamwork", "Understand collaboration and team responsibility."],
+      ["Time Management", "Manage work priorities and deadlines."],
+      ["Problem Solving", "Approach workplace problems systematically."],
+      ["Professional Conduct", "Understand workplace standards and conduct."],
+      ["Leadership Foundations", "Develop practical leadership habits."],
+      ["Conflict Management", "Handle workplace disagreements constructively."],
+      ["Adaptability", "Prepare for changing workplace environments."]
+    ];
+
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">WORK READY</div>
+
+          <h1>Prepare for the world of work.</h1>
+
+          <p>
+            Work Ready is a complete learning area with courses
+            designed around practical workplace behaviour and skills.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Work Ready Courses</h2>
+
+          <div class="grid">
+
+            ${courses.map((course, index) => `
+              <article data-a="work-course">
+
+                <small>${String(index + 1).padStart(2, "0")}</small>
+
+                <h3>${esc(course[0])}</h3>
+
+                <p>${esc(course[1])}</p>
+
+              </article>
+            `).join("")}
+
+          </div>
+
+        </section>
+
+        <section class="continue">
+
+          <div>
+            <div class="eyebrow">CERTIFICATION</div>
+
+            <h2>Every completed Work Ready course can lead to a certificate.</h2>
+
+            <p>
+              Completion, verification and any required payment review
+              are handled through G WORLD.
+            </p>
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "work-course") {
+    const course = {
+      title: "Work Ready Course",
+      modules: [
+        "Understand the workplace",
+        "Know your responsibilities",
+        "Communicate professionally",
+        "Practise workplace situations",
+        "Apply what you learned",
+        "Complete assessment",
+        "Complete practical activity",
+        "Verify completion",
+        "Certificate"
+      ]
+    };
+
+    state.selectedCourse = course;
+
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">WORK READY COURSE</div>
+
+          <h1>${esc(course.title)}</h1>
+
+          <p>
+            Understand → Practise → Apply → Verify → Certify.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Roadmap</h2>
+
+          <div class="grid">
+
+            ${course.modules.map((module, index) => `
+              <article>
+                <small>${String(index + 1).padStart(2, "0")}</small>
+                <h3>${esc(module)}</h3>
+                <p>
+                  Structured learning step.
+                </p>
+              </article>
+            `).join("")}
+
+          </div>
+
+        </section>
+
+        <section class="payment-preview">
+
+          <div class="eyebrow">ONE-TIME ACCESS</div>
+
+          <h2>Unlock the complete course.</h2>
+
+          <p>
+            G WORLD learning access is one-time and includes eligible
+            learning content and certificate workflow.
+          </p>
+
+          <div class="price">${naira(3000)}</div>
+
+          <button class="primary full" data-a="payment">
+            MAKE PAYMENT
+          </button>
+
+        </section>
+
+        ${supportButton()}
+
+        <footer>
+          G WORLD · Discover What You Need to Know.
+        </footer>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "payment") {
+    const course = state.selectedCourse || {
+      title: "G WORLD Learning Access"
+    };
+
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="payment-shell">
+
+          <div class="payment-brand">
+            <div class="eyebrow">G WORLD LEARNING ACCESS</div>
+
+            <h1>Complete your payment</h1>
+
+            <p>
+              This is a one-time payment of ${naira(PAYMENT.amount)}.
+            </p>
+          </div>
+
+          <div class="payment-card">
+
+            <div class="payment-card-top">
+              <span>ONE-TIME ACCESS</span>
+              <strong>${naira(PAYMENT.amount)}</strong>
+            </div>
+
+            <div class="payment-purpose">
+
+              <div class="eyebrow">WHAT YOU ARE UNLOCKING</div>
+
+              <h2>${esc(course.title)}</h2>
+
+              <p>
+                Your payment gives you access to the structured G WORLD
+                learning journey, including lessons, practice,
+                assessment, projects where applicable and certificate
+                eligibility after successful completion and review.
+              </p>
+
+            </div>
+
+            <div class="payment-account">
+
+              <div class="eyebrow">PAYMENT ACCOUNT</div>
+
+              <div class="account-row">
+                <span>Provider</span>
+                <strong>${esc(PAYMENT.provider)}</strong>
+              </div>
+
+              <div class="account-row">
+                <span>Account Name</span>
+                <strong>${esc(PAYMENT.accountName)}</strong>
+              </div>
+
+              <div class="account-row">
+                <span>Account Number</span>
+
+                <strong>
+                  ${esc(PAYMENT.accountNumber)}
+
+                  <button
+                    class="small-action"
+                    type="button"
+                    data-copy="${esc(PAYMENT.accountNumber)}"
+                  >
+                    COPY
+                  </button>
+                </strong>
+
+              </div>
+
+            </div>
+
+            <div class="payment-note">
+
+              <strong>After making the transfer</strong>
+
+              <p>
+                Click “I've Made Payment”. G WORLD will record your
+                payment as waiting for admin approval. Your paid
+                learning content will remain locked until approval.
+              </p>
+
+            </div>
+
+            <button
+              class="primary full"
+              data-a="payment-submitted"
+            >
+              I'VE MADE PAYMENT
+            </button>
+
+          </div>
+
+          ${supportButton()}
+
+        </section>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "payment-status") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">PAYMENT STATUS</div>
+
+          <h1>Waiting for approval.</h1>
+
+          <p>
+            Your payment has been registered and sent to the G WORLD
+            administration team for review.
+          </p>
+
+        </section>
+
+        <section class="status-card">
+
+          <div class="status-icon">✓</div>
+
+          <div class="eyebrow">CURRENT STATUS</div>
+
+          <h2>WAITING FOR APPROVAL</h2>
+
+          <p>
+            Your access will be activated after the payment is reviewed
+            and confirmed by an authorized G WORLD administrator.
+          </p>
+
+        </section>
+
+        <button class="secondary full" data-a="refresh-payment">
+          CHECK PAYMENT STATUS
+        </button>
+
+        ${supportButton()}
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "payment-rejected") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">PAYMENT STATUS</div>
+
+          <h1>Payment not confirmed.</h1>
+
+          <p>
+            The submitted payment was not confirmed by G WORLD
+            administration.
+          </p>
+
+        </section>
+
+        <section class="status-card">
+
+          <div class="status-icon">!</div>
+
+          <div class="eyebrow">CURRENT STATUS</div>
+
+          <h2>PAYMENT NOT CONFIRMED</h2>
+
+          <p>
+            If you believe this was an error, you can contact the
+            G WORLD Team or submit your payment again.
+          </p>
+
+        </section>
+
+        <button class="primary full" data-a="payment">
+          SUBMIT PAYMENT AGAIN
+        </button>
+
+        ${supportButton()}
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "support") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">G WORLD SUPPORT</div>
+
+          <h1>How can we help?</h1>
+
+          <p>
+            Send a message to the G WORLD Team. Your message will be
+            attached to your G WORLD account.
+          </p>
+
+        </section>
+
+        <section class="panel">
+
+          <form id="support-form">
+
+            <label>
+              Category
+
+              <select name="category">
+                <option value="general">General</option>
+                <option value="payment">Payment</option>
+                <option value="course">Course</option>
+                <option value="lesson">Lesson</option>
+                <option value="jamb">JAMB</option>
+                <option value="cbt">CBT</option>
+                <option value="certificate">Certificate</option>
+                <option value="account">Account</option>
+                <option value="technical">Technical Problem</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+
+            <label>
+              Message
+
+              <textarea
+                name="message"
+                required
+                maxlength="2000"
+                rows="7"
+                placeholder="Type your message here..."
+              ></textarea>
+            </label>
+
+            <small class="form-error">
+              ${esc(state.error)}
+            </small>
+
+            <button class="primary full" type="submit">
+              SEND MESSAGE
+            </button>
+
+          </form>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Your Messages</h2>
+
+          <div class="grid">
+
+            <article>
+              <small>SUPPORT</small>
+              <h3>Conversation history</h3>
+              <p>
+                Replies from the G WORLD Team will appear in your
+                account when the support system is connected.
+              </p>
+            </article>
+
+          </div>
+
+        </section>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "certificate") {
+    const course = state.selectedCourse || {
+      title: "G WORLD Course"
+    };
+
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">CERTIFICATE</div>
+
+          <h1>Your G WORLD certificate</h1>
+
+          <p>
+            Every eligible completed course uses your persistent
+            G WORLD identity and a certificate-specific record.
+          </p>
+
+        </section>
+
+        ${certificateHTML(course, state.member)}
+
+        <section class="continue">
+
+          <div>
+            <div class="eyebrow">VERIFICATION</div>
+
+            <h2>Your G WORLD ID is part of your certificate identity.</h2>
+
+            <p>
+              Certificates can be verified through the G WORLD
+              verification system.
+            </p>
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "project-writer") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">PROJECT WRITER</div>
+
+          <h1>Understand your project before you write it.</h1>
+
+          <p>
+            Enter your topic and work through your project step by step.
+          </p>
+
+        </section>
+
+        <section class="panel">
+
+          <form id="project-topic-form">
+
+            <label>
+              Project Topic
+
+              <input
+                name="topic"
+                required
+                maxlength="250"
+                placeholder="Enter your project topic"
+              >
+            </label>
+
+            <button class="primary full" type="submit">
+              START MY PROJECT
+            </button>
+
+          </form>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Project Structure</h2>
+
+          <div class="grid">
+
+            <article>
+              <small>01</small>
+              <h3>Understand Your Topic</h3>
+              <p>Understand what your topic is asking.</p>
+            </article>
+
+            <article>
+              <small>02</small>
+              <h3>Chapter One</h3>
+              <p>Build the introduction and research problem.</p>
+            </article>
+
+            <article>
+              <small>03</small>
+              <h3>Chapter Two</h3>
+              <p>Build the literature review.</p>
+            </article>
+
+            <article>
+              <small>04</small>
+              <h3>Chapter Three</h3>
+              <p>Build the methodology.</p>
+            </article>
+
+            <article>
+              <small>05</small>
+              <h3>Chapter Four</h3>
+              <p>Understand analysis and presentation.</p>
+            </article>
+
+            <article>
+              <small>06</small>
+              <h3>Chapter Five</h3>
+              <p>Build conclusions and recommendations.</p>
+            </article>
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+      </main>
+    `;
+    return;
+  }
+
+  if (
+    state.screen === "opportunities" ||
+    state.screen === "research" ||
+    state.screen === "academic"
+  ) {
+    const titles = {
+      opportunities: "Opportunities",
+      research: "Discoveries & Research",
+      academic: "Academic Resources"
+    };
+
+    app.innerHTML = `
+      <main class="home">
+
+        ${commonNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">G WORLD</div>
+
+          <h1>${titles[state.screen]}</h1>
+
+          <p>
+            Important information is organised centrally and surfaced
+            in the section where it is useful.
+          </p>
+
+        </section>
+
+        <section class="continue">
+
+          <div>
+            <div class="eyebrow">NEW UPDATES</div>
+
+            <h2>Current information</h2>
+
+            <p>
+              Newly approved information appears first, while older
+              information remains available under Existing Information.
+            </p>
+          </div>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Existing Information</h2>
+
+          <div class="grid">
+
+            <article>
+              <small>01</small>
+              <h3>Information Library</h3>
+              <p>
+                Previously approved information remains accessible.
+              </p>
+            </article>
+
+          </div>
+
+        </section>
+
+        ${supportButton()}
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "admin-gate") {
+    app.innerHTML = `
+      <main class="center enter-screen">
+
+        <section class="panel admin-gate">
+
+          <div class="form-brand">
+            <span>G</span><b>G WORLD</b>
+          </div>
+
+          <div class="eyebrow">SECURITY CHECK</div>
+
+          <h1>Additional verification required.</h1>
+
+          <p>
+            Your administrator identity has been recognised.
+            Enter your private administrator access code.
+          </p>
+
+          <form id="admin-code-form">
+
+            <label>
+              Administrator Code
+
+              <input
+                name="code"
+                type="password"
+                required
+                autocomplete="current-password"
+                maxlength="128"
+                placeholder="Enter your private code"
+              >
+            </label>
+
+            <small class="form-error">
+              ${esc(state.error)}
+            </small>
+
+            <button class="primary full" type="submit">
+              VERIFY ADMIN ACCESS
+            </button>
+
+          </form>
+
+          <button class="link" data-a="home">
+            ← Return to G WORLD
+          </button>
+
+        </section>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "admin") {
+    app.innerHTML = `
+      <main class="home admin-home">
+
+        <nav>
+
+          <div class="mini">
+            <b>G</b> G WORLD ADMIN
+          </div>
+
+          <div class="nav-user">
+            <span>ADMIN</span>
+            <button class="logout-btn" data-a="admin-logout">
+              LOG OUT
+            </button>
+          </div>
+
+        </nav>
+
+        <section class="hero">
+
+          <div class="eyebrow">CONTROL ROOM</div>
+
+          <h1>G WORLD Administration</h1>
+
+          <p>
+            Manage members, learning, payments, information,
+            support, certificates and system resources.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <h2>Administration</h2>
+
+          <div class="grid">
+
+            <article data-a="admin-payments">
+              <small>01</small>
+              <h3>Payment Reviews</h3>
+              <p>Review ₦3,000 payment submissions.</p>
+            </article>
+
+            <article data-a="admin-support">
+              <small>02</small>
+              <h3>Support Inbox</h3>
+              <p>Read and reply to learner messages.</p>
+            </article>
+
+            <article data-a="admin-content">
+              <small>03</small>
+              <h3>Learning Content</h3>
+              <p>Manage courses, lessons, skills and videos.</p>
+            </article>
+
+            <article data-a="admin-jamb">
+              <small>04</small>
+              <h3>JAMB</h3>
+              <p>Manage news, syllabus, CBT and combinations.</p>
+            </article>
+
+            <article data-a="admin-information">
+              <small>05</small>
+              <h3>Information</h3>
+              <p>Review new information before publication.</p>
+            </article>
+
+            <article data-a="admin-certificates">
+              <small>06</small>
+              <h3>Certificates</h3>
+              <p>Review completion and certificate records.</p>
+            </article>
+
+            <article data-a="admin-members">
+              <small>07</small>
+              <h3>Members</h3>
+              <p>View member records and learning access.</p>
+            </article>
+
+            <article data-a="admin-monitoring">
+              <small>08</small>
+              <h3>Monitoring</h3>
+              <p>Watch traffic, usage and system health.</p>
+            </article>
+
+            <article data-a="admin-cleanup">
+              <small>09</small>
+              <h3>Storage & Cleanup</h3>
+              <p>Review unnecessary temporary information.</p>
+            </article>
+
+            <article data-a="admin-settings">
+              <small>10</small>
+              <h3>Settings</h3>
+              <p>Manage editable G WORLD settings.</p>
+            </article>
+
+          </div>
+
+        </section>
+
+        <section class="admin-status-panel">
+
+          <div class="eyebrow">SYSTEM STATUS</div>
+
+          <h2>GREEN — NORMAL</h2>
+
+          <p>
+            Monitoring is designed to conserve free-tier resources
+            and protect core G WORLD functions.
+          </p>
+
+        </section>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "admin-payments") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${adminNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">ADMIN · PAYMENTS</div>
+
+          <h1>Payment Reviews</h1>
+
+          <p>
+            Review manual ₦3,000 payment submissions before unlocking
+            paid learning access.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article>
+              <small>WAITING</small>
+              <h3>Payment Review Queue</h3>
+              <p>
+                Pending payment records will appear here from the
+                G WORLD payment service.
+              </p>
+
+              <div class="button-row">
+                <button class="primary" data-a="payment-approve">
+                  APPROVE
+                </button>
+
+                <button class="secondary" data-a="payment-reject">
+                  REJECT
+                </button>
+              </div>
+            </article>
+
+          </div>
+
+        </section>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "admin-support") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${adminNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">ADMIN · SUPPORT</div>
+
+          <h1>Support Inbox</h1>
+
+          <p>
+            Learner messages are grouped here so the administrator
+            can read and respond.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article>
+              <small>INBOX</small>
+              <h3>G WORLD Support</h3>
+
+              <p>
+                Messages from members will appear here.
+              </p>
+
+              <button class="primary" data-a="support-open">
+                OPEN INBOX
+              </button>
+
+            </article>
+
+          </div>
+
+        </section>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "admin-content") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${adminNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">ADMIN · LEARNING</div>
+
+          <h1>Learning Content</h1>
+
+          <p>
+            Manage reusable courses, lessons, skills, videos,
+            questions and projects without rebuilding the learner
+            interface.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article>
+              <small>01</small>
+              <h3>Courses</h3>
+              <p>Add, edit, preview and publish courses.</p>
+            </article>
+
+            <article>
+              <small>02</small>
+              <h3>Tech Skills</h3>
+              <p>Manage Python, Excel, SQL and other skills.</p>
+            </article>
+
+            <article>
+              <small>03</small>
+              <h3>Lessons</h3>
+              <p>Edit explanations, practice and assessments.</p>
+            </article>
+
+            <article>
+              <small>04</small>
+              <h3>Videos</h3>
+              <p>Replace YouTube IDs without changing code.</p>
+            </article>
+
+            <article>
+              <small>05</small>
+              <h3>Questions</h3>
+              <p>Manage quizzes and CBT question banks.</p>
+            </article>
+
+            <article>
+              <small>06</small>
+              <h3>Projects</h3>
+              <p>Manage practical projects and verification.</p>
+            </article>
+
+          </div>
+
+        </section>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "admin-jamb") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${adminNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">ADMIN · JAMB</div>
+
+          <h1>Manage JAMB</h1>
+
+          <p>
+            Keep JAMB information current without rebuilding the
+            learner-facing pages.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article>
+              <small>01</small>
+              <h3>New Updates</h3>
+              <p>Review newly collected JAMB information.</p>
+            </article>
+
+            <article>
+              <small>02</small>
+              <h3>Existing Information</h3>
+              <p>Manage older approved information.</p>
+            </article>
+
+            <article>
+              <small>03</small>
+              <h3>Syllabus</h3>
+              <p>Manage subjects and topics.</p>
+            </article>
+
+            <article>
+              <small>04</small>
+              <h3>CBT Questions</h3>
+              <p>Manage science, commercial, arts and other questions.</p>
+            </article>
+
+            <article>
+              <small>05</small>
+              <h3>Subject Combinations</h3>
+              <p>Update course combinations and verification dates.</p>
+            </article>
+
+            <article>
+              <small>06</small>
+              <h3>Approved Sources</h3>
+              <p>Control which sources may feed the update queue.</p>
+            </article>
+
+          </div>
+
+        </section>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "admin-information") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${adminNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">ADMIN · INFORMATION</div>
+
+          <h1>Information Review Queue</h1>
+
+          <p>
+            New information must be reviewed before it becomes
+            publicly visible across G WORLD.
+          </p>
+
+        </section>
+
+        <section class="continue">
+
+          <div>
+            <div class="eyebrow">PIPELINE</div>
+
+            <h2>
+              Source → Filter → Deduplicate → Review → Approve → Publish
+            </h2>
+
+            <p>
+              Approved information can appear in multiple G WORLD
+              sections without duplicating the underlying record.
+            </p>
+          </div>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article>
+              <small>REVIEW</small>
+              <h3>No pending item displayed yet</h3>
+              <p>
+                The daily information pipeline will populate this
+                queue after the backend update service is enabled.
+              </p>
+            </article>
+
+          </div>
+
+        </section>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "admin-certificates") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${adminNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">ADMIN · CERTIFICATES</div>
+
+          <h1>Certificate Management</h1>
+
+          <p>
+            Certificates remain linked to the member's permanent
+            G WORLD identity while each certificate receives its own
+            certificate record.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article>
+              <small>01</small>
+              <h3>Completion Review</h3>
+              <p>Review learner completion.</p>
+            </article>
+
+            <article>
+              <small>02</small>
+              <h3>Certificate Release</h3>
+              <p>Approve eligible certificates.</p>
+            </article>
+
+            <article>
+              <small>03</small>
+              <h3>Verification</h3>
+              <p>Maintain verification records.</p>
+            </article>
+
+            <article>
+              <small>04</small>
+              <h3>Certificate Template</h3>
+              <p>
+                The approved G WORLD certificate pattern remains
+                consistent across courses.
+              </p>
+            </article>
+
+          </div>
+
+        </section>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "admin-members") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${adminNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">ADMIN · MEMBERS</div>
+
+          <h1>Members</h1>
+
+          <p>
+            View members, G WORLD IDs, learning access and
+            completion information.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article>
+              <small>MEMBERS</small>
+              <h3>Member Directory</h3>
+              <p>
+                Member records are loaded from the G WORLD database.
+              </p>
+            </article>
+
+          </div>
+
+        </section>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "admin-monitoring") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${adminNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">ADMIN · MONITORING</div>
+
+          <h1>G WORLD System Health</h1>
+
+          <p>
+            Monitor application activity while conserving free-tier
+            resources.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article>
+              <small>01</small>
+              <h3>Traffic</h3>
+              <p>Visitors, sessions and page activity.</p>
+            </article>
+
+            <article>
+              <small>02</small>
+              <h3>API</h3>
+              <p>Requests, errors and response behaviour.</p>
+            </article>
+
+            <article>
+              <small>03</small>
+              <h3>D1</h3>
+              <p>Database activity and growth.</p>
+            </article>
+
+            <article>
+              <small>04</small>
+              <h3>Storage</h3>
+              <p>Temporary files and retained data.</p>
+            </article>
+
+            <article>
+              <small>05</small>
+              <h3>Updates</h3>
+              <p>Daily update jobs and review backlog.</p>
+            </article>
+
+            <article>
+              <small>06</small>
+              <h3>Security</h3>
+              <p>Suspicious activity and protected routes.</p>
+            </article>
+
+          </div>
+
+        </section>
+
+        <section class="admin-status-panel">
+
+          <div class="eyebrow">RESOURCE PROTECTION</div>
+
+          <h2>GREEN — NORMAL</h2>
+
+          <p>
+            The application is designed to switch into conservation
+            behaviour before optional workloads threaten core services.
+          </p>
+
+        </section>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "admin-cleanup") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${adminNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">ADMIN · STORAGE</div>
+
+          <h1>Storage & Cleanup</h1>
+
+          <p>
+            Review information that can safely be removed before
+            deleting anything.
+          </p>
+
+        </section>
+
+        <section class="doors">
+
+          <div class="grid">
+
+            <article>
+              <small>SAFE TO REVIEW</small>
+              <h3>Temporary Files</h3>
+              <p>Temporary uploads and generated files.</p>
+              <button class="secondary" data-a="cleanup-temp">
+                REVIEW
+              </button>
+            </article>
+
+            <article>
+              <small>SAFE TO REVIEW</small>
+              <h3>Expired Sessions</h3>
+              <p>Old authentication sessions.</p>
+              <button class="secondary" data-a="cleanup-sessions">
+                REVIEW
+              </button>
+            </article>
+
+            <article>
+              <small>SAFE TO REVIEW</small>
+              <h3>Technical Logs</h3>
+              <p>Old non-essential technical records.</p>
+              <button class="secondary" data-a="cleanup-logs">
+                REVIEW
+              </button>
+            </article>
+
+            <article>
+              <small>PROTECTED</small>
+              <h3>Permanent Information</h3>
+              <p>
+                Member identity, certificates, published knowledge,
+                completion records and important academic records
+                are not automatically deleted.
+              </p>
+            </article>
+
+          </div>
+
+        </section>
+
+      </main>
+    `;
+    return;
+  }
+
+  if (state.screen === "admin-settings") {
+    app.innerHTML = `
+      <main class="home">
+
+        ${adminNav()}
+
+        <section class="hero">
+
+          <div class="eyebrow">ADMIN · SETTINGS</div>
+
+          <h1>G WORLD Settings</h1>
+
+          <p>
+            Important operational settings should be editable without
+            changing the application code.
+          </p>
+
+        </section>
+
+        <section class="panel">
+
+          <div class="setting-row">
+            <span>Payment Amount</span>
+            <strong>${naira(PAYMENT.amount)}</strong>
+          </div>
+
+          <div class="setting-row">
+            <span>Payment Provider</span>
+            <strong>${esc(PAYMENT.provider)}</strong>
+          </div>
+
+          <div class="setting-row">
+            <span>Payment Account</span>
+            <strong>${esc(PAYMENT.accountNumber)}</strong>
+          </div>
+
+          <div class="setting-row">
+            <span>Account Name</span>
+            <strong>${esc(PAYMENT.accountName)}</strong>
+          </div>
+
+          <div class="setting-row">
+            <span>Information Freshness</span>
+            <strong>24 HOURS</strong>
+          </div>
+
+        </section>
+
+      </main>
+    `;
+    return;
   }
 }
-document.addEventListener("click", async e => {
-  const target = e.target.closest("[data-a]");
+
+function adminNav() {
+  return `
+    <nav>
+
+      <div class="mini">
+        <b>G</b> G WORLD ADMIN
+      </div>
+
+      <div class="nav-user">
+
+        <button
+          class="secondary"
+          data-a="admin"
+        >
+          DASHBOARD
+        </button>
+
+        <button
+          class="logout-btn"
+          data-a="admin-logout"
+        >
+          LOG OUT
+        </button>
+
+      </div>
+
+    </nav>
+  `;
+}
+
+document.addEventListener("click", async event => {
+
+  const target = event.target.closest("[data-a]");
+
   if (!target) return;
 
   const action = target.dataset.a;
 
   if (action === "new-member") {
-    go("onboard");
+    clearError();
+    goTo("onboard");
     return;
   }
 
   if (action === "existing-member") {
-    go("existing");
+    clearError();
+    goTo("existing");
     return;
   }
 
   if (action === "back-entry") {
-    go("entry");
+    clearError();
+    state.loading = false;
+    state.history = [];
+    state.screen = "entry";
+    render();
     return;
   }
 
   if (action === "home") {
-    go("home");
+    state.history = [];
+    state.screen = "home";
+    render();
+    return;
+  }
+
+  if (action === "back") {
+    goBack();
     return;
   }
 
   if (action === "logout") {
     localStorage.removeItem("gworld");
     state.member = null;
+    state.history = [];
     state.error = "";
-    state.loading = false;
-    go("entry");
+    state.screen = "entry";
+    render();
     return;
   }
 
   if (action === "reset") {
     localStorage.removeItem("gworld");
     state.member = null;
-    state.error = "";
+    state.history = [];
     state.screen = "splash";
     render();
     startIntro();
@@ -2800,308 +3462,396 @@ document.addEventListener("click", async e => {
   }
 
   if (action === "courses") {
-    go("courses");
-    return;
-  }
-
-  if (action === "course") {
-    state.selectedCourse = target.dataset.id;
-    go("course");
-    return;
-  }
-
-  if (action === "lesson") {
-    state.selectedLesson = target.dataset.id;
-    go("lesson");
+    goTo("courses");
     return;
   }
 
   if (action === "tech-skills") {
-    go("tech-skills");
+    goTo("tech-skills");
     return;
   }
 
-  if (action === "skill") {
-    state.selectedSection = target.dataset.id;
-    go("skill");
-    return;
-  }
-
-  if (action === "skill-lesson") {
-    state.selectedLesson = target.dataset.id;
-    go("skill-lesson");
-    return;
-  }
-
-  if (action === "python-playground") {
-    go("python-playground");
-    return;
-  }
-
-  if (action === "run-python") {
-    await runPython();
-    return;
-  }
-
-  if (action === "ai" || action === "information") {
-    go("information");
-    return;
-  }
-
-  if (action === "information-section") {
-    state.selectedSection = target.dataset.id;
-    go("information-section");
-    return;
-  }
-
-  if (action === "information-item") {
-    state.selectedSection = target.dataset.section;
-    state.selectedLesson = target.dataset.index;
-    go("information-item");
+  if (action === "ai-tech") {
+    goTo("ai-tech");
     return;
   }
 
   if (action === "jamb") {
-    go("jamb");
+    goTo("jamb");
     return;
   }
 
-  if (action === "jamb-news") {
-    go("jamb-news");
+  if (action === "opportunities") {
+    goTo("opportunities");
     return;
   }
 
-  if (action === "jamb-syllabus") {
-    go("jamb-syllabus");
+  if (action === "research") {
+    goTo("research");
     return;
   }
 
-  if (action === "jamb-cbt") {
-    go("jamb-cbt");
-    return;
-  }
-
-  if (action === "jamb-combinations") {
-    go("jamb-combinations");
-    return;
-  }
-
-  if (action === "jamb-past") {
-    go("jamb-past");
-    return;
-  }
-
-  if (action === "jamb-stream") {
-    state.selectedSection = target.dataset.stream;
-    go("jamb-stream");
-    return;
-  }
-
-  if (action === "jamb-answer") {
-    const q = jambQuestions.find(
-      x => x.id === target.dataset.q
-    );
-
-    const result = document.querySelector(
-      `#result-${CSS.escape(target.dataset.q)}`
-    );
-
-    if (!q || !result) return;
-
-    const selected = Number(target.dataset.answer);
-
-    result.textContent =
-      selected === q.answer
-        ? "✓ Correct. Keep going."
-        : `Not quite. Review the topic and try again.`;
-
-    result.className =
-      `answer-result ${selected === q.answer ? "correct" : "incorrect"}`;
-
-    return;
-  }
-
-  if (action === "ican") {
-    go("ican");
-    return;
-  }
-
-  if (action === "ats-study") {
-    go("ats-study");
-    return;
-  }
-
-  if (action === "ats-past") {
-    go("ats-past");
-    return;
-  }
-
-  if (action === "ats-mixed") {
-    go("ats-mixed");
-    return;
-  }
-
-  if (action === "ats-news") {
-    go("ats-news");
-    return;
-  }
-
-  if (action === "ats-study-link") {
-    window.open(
-      "https://www.icanig.org/",
-      "_blank",
-      "noopener,noreferrer"
-    );
-    return;
-  }
-
-  if (action === "work-ready") {
-    go("work-ready");
-    return;
-  }
-
-  if (action === "work-course") {
-    state.selectedLesson = target.dataset.index;
-    go("work-course");
-    return;
-  }
-
-  if (action === "projects") {
-    go("projects");
-    return;
-  }
-
-  if (action === "project") {
-    state.selectedLesson = target.dataset.index;
-    go("project");
+  if (action === "academic") {
+    goTo("academic");
     return;
   }
 
   if (action === "project-writer") {
-    go("project-writer");
+    goTo("project-writer");
+    return;
+  }
+
+  if (action === "work-ready") {
+    goTo("work-ready");
+    return;
+  }
+
+  if (action === "python-course") {
+    goTo("python-course");
+    return;
+  }
+
+  if (action === "python-intro") {
+    goTo("python-intro");
+    return;
+  }
+
+  if (action === "python-practice") {
+    goTo("python-practice");
+    return;
+  }
+
+  if (action === "python-answer-correct") {
+    alert(
+      "Correct. Python is a programming language used to give instructions to a computer."
+    );
+    return;
+  }
+
+  if (action === "python-answer-wrong") {
+    alert(
+      "Not quite. Python is a programming language used to give instructions to a computer."
+    );
+    return;
+  }
+
+  if (action.startsWith("course-")) {
+    goTo(action);
+    return;
+  }
+
+  if (action === "jamb-information") {
+    goTo("jamb-information");
+    return;
+  }
+
+  if (action === "jamb-news") {
+    goTo("jamb-news");
+    return;
+  }
+
+  if (action === "jamb-syllabus") {
+    goTo("jamb-syllabus");
+    return;
+  }
+
+  if (action === "jamb-cbt") {
+    goTo("jamb-cbt");
+    return;
+  }
+
+  if (action === "jamb-combinations") {
+    goTo("jamb-combinations");
+    return;
+  }
+
+  if (action.startsWith("jamb-cbt-")) {
+    goTo(action);
+    return;
+  }
+
+  if (action.startsWith("cbt-start-")) {
+    alert(
+      "CBT session structure is ready. Questions will be loaded from the approved G WORLD question bank."
+    );
+    return;
+  }
+
+  if (action === "work-course") {
+    goTo("work-course");
+    return;
+  }
+
+  if (action === "payment") {
+    goTo("payment");
+    return;
+  }
+
+  if (action === "payment-submitted") {
+    state.loading = true;
+    render();
+
+    try {
+      await api("/api/payment/submit", {
+        method: "POST",
+        body: JSON.stringify({
+          gworldId: state.member?.gworldId,
+          amount: PAYMENT.amount,
+          course: state.selectedCourse?.title || "G WORLD Learning Access"
+        })
+      });
+
+      state.loading = false;
+      state.screen = "payment-status";
+      render();
+
+    } catch (error) {
+      state.loading = false;
+      state.error = error.message;
+      render();
+    }
+
+    return;
+  }
+
+  if (action === "refresh-payment") {
+    try {
+      const result = await api(
+        `/api/payment/status?gworldId=${encodeURIComponent(
+          state.member?.gworldId || ""
+        )}`
+      );
+
+      if (result.status === "approved") {
+        state.screen = "home";
+      } else if (result.status === "rejected") {
+        state.screen = "payment-rejected";
+      } else {
+        state.screen = "payment-status";
+      }
+
+      render();
+
+    } catch (error) {
+      state.error = error.message;
+      render();
+    }
+
     return;
   }
 
   if (action === "support") {
-    go("support");
+    clearError();
+    goTo("support");
     return;
   }
 
-  if (action === "admin-login") {
-    go("admin-login");
+  if (action === "certificate") {
+    goTo("certificate");
     return;
   }
 
   if (action === "admin") {
-    go("admin");
+    goTo("admin");
     return;
   }
 
-  if (action.startsWith("admin-")) {
-    go(action);
+  if (action === "admin-payments") {
+    goTo("admin-payments");
     return;
   }
 
-  if (action === "admin-update-now") {
-    alert(
-      "Update request recorded. The secure Worker update endpoint should perform the approved-source review."
-    );
+  if (action === "admin-support") {
+    goTo("admin-support");
     return;
   }
 
-  if (action === "admin-pause-updates") {
-    alert("Daily updates are now marked for pause.");
+  if (action === "admin-content") {
+    goTo("admin-content");
     return;
   }
 
-  if (action === "cleanup-selected") {
-    alert(
-      "Cleanup selection recorded. Permanent identity, certificate and audit records must remain protected."
-    );
+  if (action === "admin-jamb") {
+    goTo("admin-jamb");
     return;
   }
 
-  if (action === "admin-publish-import") {
-    alert(
-      "Validate the content package before publishing it to the live content layer."
-    );
+  if (action === "admin-information") {
+    goTo("admin-information");
     return;
   }
 
-  if (action === "show-answer") {
-    target.textContent = "Think about the question, then explain your answer.";
+  if (action === "admin-certificates") {
+    goTo("admin-certificates");
+    return;
+  }
+
+  if (action === "admin-members") {
+    goTo("admin-members");
+    return;
+  }
+
+  if (action === "admin-monitoring") {
+    goTo("admin-monitoring");
+    return;
+  }
+
+  if (action === "admin-cleanup") {
+    goTo("admin-cleanup");
+    return;
+  }
+
+  if (action === "admin-settings") {
+    goTo("admin-settings");
+    return;
+  }
+
+  if (action === "admin-logout") {
+    state.admin = null;
+    state.history = [];
+    state.screen = "home";
+    render();
+    return;
+  }
+
+  if (action === "payment-approve") {
+    try {
+      await api("/api/admin/payment/review", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "approve",
+          paymentId: state.selectedPayment?.id || null
+        })
+      });
+
+      alert("Payment approved.");
+      goTo("admin-payments");
+
+    } catch (error) {
+      state.error = error.message;
+      render();
+    }
+
+    return;
+  }
+
+  if (action === "payment-reject") {
+    try {
+      await api("/api/admin/payment/review", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "reject",
+          paymentId: state.selectedPayment?.id || null
+        })
+      });
+
+      alert("Payment rejected.");
+      goTo("admin-payments");
+
+    } catch (error) {
+      state.error = error.message;
+      render();
+    }
+
+    return;
+  }
+
+  if (action === "support-open") {
+    try {
+      const result = await api("/api/admin/support");
+      state.supportMessages = result.messages || [];
+      alert(
+        state.supportMessages.length
+          ? `${state.supportMessages.length} support message(s) loaded.`
+          : "No support messages yet."
+      );
+    } catch (error) {
+      state.error = error.message;
+      render();
+    }
+    return;
+  }
+
+  if (target.dataset.copy) {
+    try {
+      await navigator.clipboard.writeText(target.dataset.copy);
+      target.textContent = "COPIED";
+      setTimeout(() => {
+        target.textContent = "COPY";
+      }, 1500);
+    } catch {
+      alert(`Account number: ${target.dataset.copy}`);
+    }
+    return;
+  }
+
+  if (target.dataset.courseCombination) {
+    state.selectedCourse = target.dataset.courseCombination;
+    goTo("combination-result");
     return;
   }
 });
 
-document.addEventListener("submit", async e => {
-  if (e.target.id === "f") {
-    e.preventDefault();
+document.addEventListener("submit", async event => {
 
-    const form = e.target;
-    const d = Object.fromEntries(new FormData(form));
+  if (event.target.id === "f") {
+    event.preventDefault();
 
-    const name = String(d.name || "").trim();
-    const phone = String(d.phone || "").trim();
-    const email = String(d.email || "").trim();
+    const form = event.target;
+    const data = Object.fromEntries(new FormData(form));
 
-    let ok = true;
+    const name = String(data.name || "").trim();
+    const phone = String(data.phone || "").trim();
+    const email = String(data.email || "").trim();
 
-    const setErr = (field, message) => {
-      const el = form.querySelector(`[data-error="${field}"]`);
-      if (el) el.textContent = message || "";
-      if (message) ok = false;
+    let valid = true;
+
+    const setError = (field, message) => {
+      const element = form.querySelector(
+        `[data-error="${field}"]`
+      );
+
+      if (element) element.textContent = message;
+
+      if (message) valid = false;
     };
 
-    setErr(
+    setError(
       "name",
-      name.length < 2 ? "Please enter your full name." : ""
+      name.length < 2
+        ? "Please enter your full name."
+        : ""
     );
 
-    setErr(
+    setError(
       "phone",
       phone.replace(/\D/g, "").length < 7
         ? "Please enter a valid phone number."
         : ""
     );
 
-    setErr(
+    setError(
       "email",
       email && !/^\S+@\S+\.\S+$/.test(email)
         ? "Please enter a valid email or leave it blank."
         : ""
     );
 
-    if (!ok) return;
+    if (!valid) return;
 
     state.loading = true;
     state.error = "";
     render();
 
     try {
-      const response = await fetch(`${API_BASE}/api/register`, {
+      const result = await api("/api/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
         body: JSON.stringify({
           name,
           phone,
           email
         })
       });
-
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok || !result.ok) {
-        state.error =
-          result.error ||
-          "Registration could not be completed.";
-
-        state.loading = false;
-        render();
-        return;
-      }
 
       state.member = result.member;
 
@@ -3111,35 +3861,31 @@ document.addEventListener("submit", async e => {
       );
 
       state.loading = false;
-      state.error = "";
       state.screen = "card";
+      state.history = [];
 
       render();
       generateMemberQR();
 
     } catch (error) {
-      console.error(error);
-
-      state.error =
-        "G WORLD could not connect to the registration service.";
-
       state.loading = false;
+      state.error = error.message;
       render();
     }
 
     return;
   }
 
-  if (e.target.id === "existing-form") {
-    e.preventDefault();
+  if (event.target.id === "existing-form") {
+    event.preventDefault();
 
-    const form = e.target;
-    const d = Object.fromEntries(new FormData(form));
+    const form = event.target;
+    const data = Object.fromEntries(new FormData(form));
 
-    const name = String(d.name || "").trim();
-    const email = String(d.email || "").trim();
+    const name = String(data.name || "").trim();
+    const email = String(data.email || "").trim();
 
-    let ok = true;
+    let valid = true;
 
     const nameError = form.querySelector(
       '[data-error="existing-name"]'
@@ -3151,50 +3897,32 @@ document.addEventListener("submit", async e => {
 
     if (name.length < 2) {
       nameError.textContent = "Please enter your full name.";
-      ok = false;
+      valid = false;
     } else {
       nameError.textContent = "";
     }
 
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       emailError.textContent = "Please enter a valid email.";
-      ok = false;
+      valid = false;
     } else {
       emailError.textContent = "";
     }
 
-    if (!ok) return;
+    if (!valid) return;
 
     state.loading = true;
     state.error = "";
     render();
 
     try {
-      const response = await fetch(
-        `${API_BASE}/api/member-login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            name,
-            email
-          })
-        }
-      );
-
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok || !result.ok) {
-        state.error =
-          result.error ||
-          "We could not find a G WORLD account.";
-
-        state.loading = false;
-        render();
-        return;
-      }
+      const result = await api("/api/member-login", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          email
+        })
+      });
 
       state.member = result.member;
 
@@ -3204,301 +3932,156 @@ document.addEventListener("submit", async e => {
       );
 
       state.loading = false;
-      state.error = "";
-      state.screen = "home";
+      state.history = [];
+
+      if (result.isAdmin) {
+        state.screen = "admin-gate";
+      } else {
+        state.screen = "home";
+      }
 
       render();
 
     } catch (error) {
-      console.error(error);
-
-      state.error =
-        "G WORLD could not connect to the member service.";
-
       state.loading = false;
+      state.error =
+        error.message ||
+        "We could not find a G WORLD account with those details.";
       render();
     }
 
     return;
   }
 
-  if (e.target.id === "support-form") {
-    e.preventDefault();
+  if (event.target.id === "support-form") {
+    event.preventDefault();
 
-    const form = e.target;
+    const form = event.target;
     const data = Object.fromEntries(new FormData(form));
 
+    const message = String(data.message || "").trim();
+    const category = String(data.category || "general");
+
+    if (!message) {
+      state.error = "Please enter your message.";
+      render();
+      return;
+    }
+
+    state.loading = true;
+    state.error = "";
+    render();
+
     try {
-      const response = await fetch(`${API_BASE}/api/support`, {
+      await api("/api/support", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
         body: JSON.stringify({
           gworldId: state.member?.gworldId,
-          message: String(data.message || "").trim()
+          category,
+          message
         })
       });
 
-      if (!response.ok) {
-        throw new Error("Support request failed.");
-      }
-
-      form.reset();
-
-      alert(
-        "Your message has been sent to the GWard team."
-      );
+      state.loading = false;
+      state.error = "";
+      alert("Your message has been sent to the G WORLD Team.");
+      goTo("home");
 
     } catch (error) {
-      console.error(error);
-
-      alert(
-        "The message could not be sent right now. Please try again."
-      );
+      state.loading = false;
+      state.error = error.message;
+      render();
     }
 
     return;
   }
 
-  if (e.target.id === "project-topic-form") {
-    e.preventDefault();
+  if (event.target.id === "admin-code-form") {
+    event.preventDefault();
 
-    const data = Object.fromEntries(
-      new FormData(e.target)
-    );
+    const form = event.target;
+    const data = Object.fromEntries(new FormData(form));
+    const code = String(data.code || "");
 
+    if (!code) {
+      state.error = "Enter your administrator code.";
+      render();
+      return;
+    }
+
+    state.loading = true;
+    state.error = "";
+    render();
+
+    try {
+      const result = await api("/api/admin/verify", {
+        method: "POST",
+        body: JSON.stringify({
+          code
+        })
+      });
+
+      state.loading = false;
+      state.admin = result.admin || {
+        authenticated: true
+      };
+      state.history = [];
+      state.screen = "admin";
+      render();
+
+    } catch (error) {
+      state.loading = false;
+      state.error =
+        "Administrator verification failed.";
+      render();
+    }
+
+    return;
+  }
+
+  if (event.target.id === "project-topic-form") {
+    event.preventDefault();
+
+    const form = event.target;
+    const data = Object.fromEntries(new FormData(form));
     const topic = String(data.topic || "").trim();
 
     if (!topic) return;
 
-    alert(
-      `Your project topic is: ${topic}\n\nG WORLD will guide you through understanding the topic, research design, Chapter One to Chapter Five, analysis and presentation.`
-    );
-
-    return;
-  }
-
-  if (e.target.id === "admin-video-form") {
-    e.preventDefault();
-
-    const data = Object.fromEntries(
-      new FormData(e.target)
-    );
-
-    try {
-      const response = await fetch(
-        `${API_BASE}/api/admin/content/video`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          credentials: "include",
-          body: JSON.stringify(data)
-        }
-      );
-
-      if (!response.ok) throw new Error("Save failed.");
-
-      alert("Video saved.");
-      go("admin-videos");
-
-    } catch (error) {
-      console.error(error);
-      alert("The secure Admin service is not available yet.");
-    }
-
-    return;
-  }
-
-  if (e.target.id === "admin-question-form") {
-    e.preventDefault();
+    state.selectedCourse = {
+      title: topic
+    };
 
     alert(
-      "Question package prepared for the secure Admin question bank."
+      "Your project topic has been received. The guided project workflow will continue from here."
     );
-
-    return;
-  }
-
-  if (e.target.id === "admin-source-form") {
-    e.preventDefault();
-
-    alert(
-      "Approved source prepared for the secure daily update system."
-    );
-
-    return;
-  }
-
-  if (e.target.id === "admin-import-form") {
-    e.preventDefault();
-
-    const data = Object.fromEntries(
-      new FormData(e.target)
-    );
-
-    try {
-      JSON.parse(String(data.json || ""));
-
-      alert(
-        "Content package is valid JSON. It can now be previewed before publishing."
-      );
-
-    } catch {
-      alert(
-        "This content package is not valid JSON."
-      );
-    }
-  }
-
-  if (e.target.id === "admin-form") {
-    e.preventDefault();
-
-    const data = Object.fromEntries(
-      new FormData(e.target)
-    );
-
-    try {
-      const response = await fetch(
-        `${API_BASE}/api/admin/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          credentials: "include",
-          body: JSON.stringify(data)
-        }
-      );
-
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok || !result.ok) {
-        state.error =
-          result.error || "Admin authentication failed.";
-
-        render();
-        return;
-      }
-
-      state.error = "";
-      go("admin");
-
-    } catch (error) {
-      console.error(error);
-
-      state.error =
-        "Secure Admin authentication is unavailable.";
-
-      render();
-    }
   }
 });
-let pyodide = null;
-let pyodideReady = null;
 
-async function loadPython() {
-  if (pyodide) return pyodide;
+document.addEventListener("input", event => {
 
-  if (!pyodideReady) {
-    pyodideReady = new Promise((resolve, reject) => {
-      const script = document.createElement("script");
+  if (event.target.id !== "course-search") return;
 
-      script.src =
-        "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js";
+  const query = event.target.value.toLowerCase().trim();
 
-      script.onload = async () => {
-        try {
-          pyodide = await window.loadPyodide({
-            indexURL:
-              "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/"
-          });
+  document
+    .querySelectorAll("[data-course-combination]")
+    .forEach(card => {
 
-          resolve(pyodide);
-        } catch (error) {
-          reject(error);
-        }
-      };
+      const course =
+        card.dataset.courseCombination.toLowerCase();
 
-      script.onerror = () => {
-        reject(
-          new Error("Python runtime could not be loaded.")
-        );
-      };
+      card.style.display =
+        !query || course.includes(query)
+          ? ""
+          : "none";
 
-      document.head.appendChild(script);
     });
-  }
-
-  return pyodideReady;
-}
-
-async function runPython() {
-  const input = document.querySelector("#python-code");
-  const output = document.querySelector("#python-output");
-
-  if (!input || !output) return;
-
-  output.textContent = "Loading Python…";
-
-  try {
-    const runtime = await loadPython();
-
-    runtime.globals.set(
-      "gworld_code",
-      input.value
-    );
-
-    const result = await runtime.runPythonAsync(`
-import io
-import contextlib
-
-_buffer = io.StringIO()
-
-with contextlib.redirect_stdout(_buffer):
-    exec(gworld_code)
-
-_buffer.getvalue()
-    `);
-
-    output.textContent =
-      String(result || "").trim() ||
-      "Code ran successfully with no printed output.";
-
-  } catch (error) {
-    output.textContent =
-      `Python error:\n${error.message || error}`;
-  }
-}
-
-function filterCombinations(value) {
-  const results = document.querySelector(
-    "#combination-results"
-  );
-
-  if (!results) return;
-
-  const q = String(value || "").trim().toLowerCase();
-
-  results.querySelectorAll(".combination-card").forEach(card => {
-    card.style.display =
-      !q ||
-      card.textContent.toLowerCase().includes(q)
-        ? ""
-        : "none";
-  });
-}
-
-document.addEventListener("input", e => {
-  if (e.target.id === "combination-search") {
-    filterCombinations(e.target.value);
-  }
 });
 
 function startIntro() {
   setTimeout(() => {
+
     if (state.member) {
       state.screen = "home";
     } else {
@@ -3506,14 +4089,15 @@ function startIntro() {
     }
 
     render();
-  }, 1800);
+
+  }, 2800);
 }
 
-const saved = localStorage.getItem("gworld");
+const savedMember = localStorage.getItem("gworld");
 
-if (saved) {
+if (savedMember) {
   try {
-    state.member = JSON.parse(saved);
+    state.member = JSON.parse(savedMember);
   } catch {
     localStorage.removeItem("gworld");
   }
