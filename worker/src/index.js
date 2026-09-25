@@ -1,9 +1,3 @@
-// worker/src/index.js
-// G WORLD — BACKEND EXTENSION
-// Preserve existing member registration and verification behaviour.
-// Additive architecture for payments, support, admin verification,
-// certificates, information updates, monitoring and cleanup.
-
 const JSON_HEADERS = {
   "content-type": "application/json; charset=UTF-8",
   "cache-control": "no-store",
