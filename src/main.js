@@ -4,15 +4,18 @@ import QRCode from "qrcode";
 const app = document.querySelector("#app");
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const VERIFY_BASE = (import.meta.env.VITE_VERIFY_BASE_URL || API_BASE).replace(/\/$/, "");
 
 const state = {
   screen: "splash",
   history: [],
   member: null,
+  token: "",
   error: "",
   loading: false,
   data: null,
   supportMessages: [],
+  adminPayments: [],
   selectedPayment: null,
   selectedCourse: null,
   admin: null
@@ -66,17 +69,87 @@ function clearError() {
   state.error = "";
 }
 
+/** Toggle submit-button busy state without a full re-render (keeps typed input). */
+function setFormBusy(form, busy, busyLabel = "PLEASE WAIT…") {
+  const button = form.querySelector('button[type="submit"]');
+  if (!button) return;
+  if (busy) {
+    button.dataset.label = button.dataset.label || button.textContent;
+    button.textContent = busyLabel;
+    button.disabled = true;
+  } else {
+    button.textContent = button.dataset.label || button.textContent;
+    button.disabled = false;
+  }
+}
+
+/** Show an API-level error inside the form without destroying the user's input. */
+function setFormError(form, message) {
+  const slot = form.querySelector(".form-error");
+  if (slot) slot.textContent = message || "";
+}
+
+function saveSession(member, token) {
+  const minimal = {
+    name: member?.name || "",
+    gworldId: member?.gworldId || "",
+    status: member?.status || "",
+    token: token || ""
+  };
+  state.member = { ...member };
+  state.token = token || "";
+  localStorage.setItem("gworld", JSON.stringify(minimal));
+}
+
+async function loadAdminPayments() {
+  try {
+    const result = await api("/api/admin/payments");
+    state.adminPayments = result.payments || [];
+  } catch (error) {
+    state.adminPayments = [];
+    state.error = error.message;
+  }
+}
+
+function clearSession() {
+  if (state.token) {
+    api("/api/auth/logout", { method: "POST" }).catch(() => {});
+  }
+  localStorage.removeItem("gworld");
+  state.member = null;
+  state.token = "";
+  state.admin = null;
+  state.error = "";
+}
+
 async function api(path, options = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {})
+  };
+
+  if (state.token) {
+    headers.Authorization = `Bearer ${state.token}`;
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
-    }
+    headers
   });
 
   const result = await response.json().catch(() => ({}));
+
+  if (response.status === 401 && state.token) {
+    // Session expired or was revoked server-side.
+    state.token = "";
+    state.member = null;
+    localStorage.removeItem("gworld");
+    state.history = [];
+    state.screen = "entry";
+    render();
+    throw new Error(result.error || "Your session has ended. Please sign in again.");
+  }
 
   if (!response.ok || result.ok === false) {
     throw new Error(result.error || "G WORLD request failed.");
@@ -91,8 +164,9 @@ async function generateMemberQR() {
 
   if (!canvas || !member?.gworldId) return;
 
+  const base = VERIFY_BASE || window.location.origin;
   const verificationURL =
-    `https://g-world.ogundeyelijah13.workers.dev/verify/${encodeURIComponent(member.gworldId)}`;
+    `${base}/verify/${encodeURIComponent(member.gworldId)}`;
 
   try {
     await QRCode.toCanvas(canvas, verificationURL, {
@@ -196,6 +270,7 @@ function commonNav(back = true) {
       </div>
 
       <div class="nav-user">
+        <button class="logout-btn" data-a="theme">THEME</button>
         <span>${esc(state.member?.name || "")}</span>
         <button class="logout-btn" data-a="logout">LOG OUT</button>
       </div>
@@ -335,6 +410,32 @@ function render() {
               <small class="field-error" data-error="email"></small>
             </label>
 
+            <label>
+              Password
+              <input
+                name="password"
+                type="password"
+                required
+                autocomplete="new-password"
+                placeholder="At least 8 characters"
+                maxlength="128"
+              >
+              <small class="field-error" data-error="password"></small>
+            </label>
+
+            <label>
+              Confirm Password
+              <input
+                name="confirm"
+                type="password"
+                required
+                autocomplete="new-password"
+                placeholder="Repeat your password"
+                maxlength="128"
+              >
+              <small class="field-error" data-error="confirm"></small>
+            </label>
+
             <small class="form-error">
               ${esc(state.error)}
             </small>
@@ -386,19 +487,6 @@ function render() {
           <form id="existing-form" novalidate>
 
             <label>
-              Full Name
-              <input
-                name="name"
-                required
-                autocomplete="name"
-                placeholder="Your full name"
-                maxlength="80"
-              >
-              <small class="field-error"
-                data-error="existing-name"></small>
-            </label>
-
-            <label>
               Email
               <input
                 name="email"
@@ -410,6 +498,20 @@ function render() {
               >
               <small class="field-error"
                 data-error="existing-email"></small>
+            </label>
+
+            <label>
+              Password
+              <input
+                name="password"
+                type="password"
+                required
+                autocomplete="current-password"
+                placeholder="Your password"
+                maxlength="128"
+              >
+              <small class="field-error"
+                data-error="existing-password"></small>
             </label>
 
             <small class="form-error">
@@ -2615,6 +2717,18 @@ function render() {
           <form id="admin-code-form">
 
             <label>
+              Account Email
+              <input
+                name="email"
+                type="email"
+                required
+                autocomplete="email"
+                maxlength="120"
+                placeholder="Your G WORLD account email"
+              >
+            </label>
+
+            <label>
               Administrator Code
 
               <input
@@ -2794,20 +2908,39 @@ function render() {
             <article>
               <small>WAITING</small>
               <h3>Payment Review Queue</h3>
-              <p>
-                Pending payment records will appear here from the
-                G WORLD payment service.
-              </p>
 
-              <div class="button-row">
-                <button class="primary" data-a="payment-approve">
-                  APPROVE
-                </button>
+              ${
+                state.adminPayments && state.adminPayments.length
+                  ? state.adminPayments.map(p => `
+                    <div class="setting-row">
+                      <span>
+                        ${esc(p.full_name || "Member")}
+                        · ${esc(p.gworld_id || "")}
+                        · ${esc(p.course_title || "")}
+                        · ${esc(String(p.status || ""))}
+                      </span>
 
-                <button class="secondary" data-a="payment-reject">
-                  REJECT
-                </button>
-              </div>
+                      ${
+                        String(p.status) === "PENDING"
+                          ? `<span class="button-row">
+                              <button class="primary" data-a="payment-approve" data-payment-id="${esc(p.id)}">
+                                APPROVE
+                              </button>
+
+                              <button class="secondary" data-a="payment-reject" data-payment-id="${esc(p.id)}">
+                                REJECT
+                              </button>
+                            </span>`
+                          : `<strong>${esc(String(p.status || ""))}</strong>`
+                      }
+                    </div>
+                  `).join("")
+                  : `<p>
+                      Pending payment records will appear here from the
+                      G WORLD payment service.
+                    </p>`
+              }
+
             </article>
 
           </div>
@@ -2846,9 +2979,24 @@ function render() {
               <small>INBOX</small>
               <h3>G WORLD Support</h3>
 
-              <p>
-                Messages from members will appear here.
-              </p>
+              ${
+                state.supportMessages && state.supportMessages.length
+                  ? state.supportMessages.map(m => `
+                    <div class="setting-row">
+                      <span>
+                        <strong>${esc(m.full_name || "Member")}</strong>
+                        · ${esc(m.category || "general")}
+                        · ${esc(m.created_at || "")}
+                        <br>
+                        ${esc(m.message || "")}
+                      </span>
+                      <strong>${esc(m.status || "OPEN")}</strong>
+                    </div>
+                  `).join("")
+                  : `<p>
+                      Messages from members will appear here.
+                    </p>`
+              }
 
               <button class="primary" data-a="support-open">
                 OPEN INBOX
@@ -3402,6 +3550,16 @@ document.addEventListener("click", async event => {
 
   const action = target.dataset.a;
 
+  if (action === "theme") {
+    const next =
+      document.documentElement.dataset.theme === "light"
+        ? "dark"
+        : "light";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("gworld-theme", next);
+    return;
+  }
+
   if (action === "new-member") {
     clearError();
     goTo("onboard");
@@ -3436,18 +3594,15 @@ document.addEventListener("click", async event => {
   }
 
   if (action === "logout") {
-    localStorage.removeItem("gworld");
-    state.member = null;
+    clearSession();
     state.history = [];
-    state.error = "";
     state.screen = "entry";
     render();
     return;
   }
 
   if (action === "reset") {
-    localStorage.removeItem("gworld");
-    state.member = null;
+    clearSession();
     state.history = [];
     state.screen = "splash";
     render();
@@ -3582,25 +3737,24 @@ document.addEventListener("click", async event => {
   }
 
   if (action === "payment-submitted") {
-    state.loading = true;
-    render();
+    const button = target;
+    button.disabled = true;
+    button.textContent = "RECORDING…";
 
     try {
       await api("/api/payment/submit", {
         method: "POST",
         body: JSON.stringify({
-          gworldId: state.member?.gworldId,
-          amount: PAYMENT.amount,
           course: state.selectedCourse?.title || "G WORLD Learning Access"
         })
       });
 
-      state.loading = false;
       state.screen = "payment-status";
       render();
 
     } catch (error) {
-      state.loading = false;
+      button.disabled = false;
+      button.textContent = "I'VE MADE PAYMENT";
       state.error = error.message;
       render();
     }
@@ -3610,13 +3764,9 @@ document.addEventListener("click", async event => {
 
   if (action === "refresh-payment") {
     try {
-      const result = await api(
-        `/api/payment/status?gworldId=${encodeURIComponent(
-          state.member?.gworldId || ""
-        )}`
-      );
+      const result = await api("/api/payment/status");
 
-      if (result.status === "approved") {
+      if (result.status === "approved" || result.access) {
         state.screen = "home";
       } else if (result.status === "rejected") {
         state.screen = "payment-rejected";
@@ -3652,6 +3802,7 @@ document.addEventListener("click", async event => {
 
   if (action === "admin-payments") {
     goTo("admin-payments");
+    loadAdminPayments().then(render);
     return;
   }
 
@@ -3701,6 +3852,13 @@ document.addEventListener("click", async event => {
   }
 
   if (action === "admin-logout") {
+    if (state.token) {
+      api("/api/auth/logout", { method: "POST" }).catch(() => {});
+      state.token = "";
+      const saved = JSON.parse(localStorage.getItem("gworld") || "{}");
+      delete saved.token;
+      localStorage.setItem("gworld", JSON.stringify(saved));
+    }
     state.admin = null;
     state.history = [];
     state.screen = "home";
@@ -3708,39 +3866,28 @@ document.addEventListener("click", async event => {
     return;
   }
 
-  if (action === "payment-approve") {
-    try {
-      await api("/api/admin/payment/review", {
-        method: "POST",
-        body: JSON.stringify({
-          action: "approve",
-          paymentId: state.selectedPayment?.id || null
-        })
-      });
+  if (action === "payment-approve" || action === "payment-reject") {
+    const review = action === "payment-approve" ? "approve" : "reject";
+    const paymentId = Number(target.dataset.paymentId || state.selectedPayment?.id || 0);
 
-      alert("Payment approved.");
-      goTo("admin-payments");
-
-    } catch (error) {
-      state.error = error.message;
-      render();
+    if (!paymentId) {
+      alert("Select a payment to review.");
+      return;
     }
 
-    return;
-  }
-
-  if (action === "payment-reject") {
     try {
       await api("/api/admin/payment/review", {
         method: "POST",
         body: JSON.stringify({
-          action: "reject",
-          paymentId: state.selectedPayment?.id || null
+          action: review,
+          paymentId
         })
       });
 
-      alert("Payment rejected.");
-      goTo("admin-payments");
+      alert(review === "approve" ? "Payment approved." : "Payment rejected.");
+      state.screen = "admin-payments";
+      await loadAdminPayments();
+      render();
 
     } catch (error) {
       state.error = error.message;
@@ -3754,11 +3901,7 @@ document.addEventListener("click", async event => {
     try {
       const result = await api("/api/admin/support");
       state.supportMessages = result.messages || [];
-      alert(
-        state.supportMessages.length
-          ? `${state.supportMessages.length} support message(s) loaded.`
-          : "No support messages yet."
-      );
+      render();
     } catch (error) {
       state.error = error.message;
       render();
@@ -3797,6 +3940,8 @@ document.addEventListener("submit", async event => {
     const name = String(data.name || "").trim();
     const phone = String(data.phone || "").trim();
     const email = String(data.email || "").trim();
+    const password = String(data.password || "");
+    const confirm = String(data.confirm || "");
 
     let valid = true;
 
@@ -3831,11 +3976,24 @@ document.addEventListener("submit", async event => {
         : ""
     );
 
+    setError(
+      "password",
+      password.length < 8
+        ? "Please choose a password of at least 8 characters."
+        : ""
+    );
+
+    setError(
+      "confirm",
+      confirm !== password
+        ? "Passwords do not match."
+        : ""
+    );
+
     if (!valid) return;
 
-    state.loading = true;
-    state.error = "";
-    render();
+    setFormError(form, "");
+    setFormBusy(form, true, "CREATING YOUR G WORLD ID…");
 
     try {
       const result = await api("/api/register", {
@@ -3843,16 +4001,12 @@ document.addEventListener("submit", async event => {
         body: JSON.stringify({
           name,
           phone,
-          email
+          email,
+          password
         })
       });
 
-      state.member = result.member;
-
-      localStorage.setItem(
-        "gworld",
-        JSON.stringify(state.member)
-      );
+      saveSession(result.member, result.token);
 
       state.loading = false;
       state.screen = "card";
@@ -3862,9 +4016,8 @@ document.addEventListener("submit", async event => {
       generateMemberQR();
 
     } catch (error) {
-      state.loading = false;
-      state.error = error.message;
-      render();
+      setFormBusy(form, false);
+      setFormError(form, error.message);
     }
 
     return;
@@ -3876,25 +4029,18 @@ document.addEventListener("submit", async event => {
     const form = event.target;
     const data = Object.fromEntries(new FormData(form));
 
-    const name = String(data.name || "").trim();
     const email = String(data.email || "").trim();
+    const password = String(data.password || "");
 
     let valid = true;
-
-    const nameError = form.querySelector(
-      '[data-error="existing-name"]'
-    );
 
     const emailError = form.querySelector(
       '[data-error="existing-email"]'
     );
 
-    if (name.length < 2) {
-      nameError.textContent = "Please enter your full name.";
-      valid = false;
-    } else {
-      nameError.textContent = "";
-    }
+    const passwordError = form.querySelector(
+      '[data-error="existing-password"]'
+    );
 
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       emailError.textContent = "Please enter a valid email.";
@@ -3903,27 +4049,28 @@ document.addEventListener("submit", async event => {
       emailError.textContent = "";
     }
 
+    if (!password) {
+      passwordError.textContent = "Please enter your password.";
+      valid = false;
+    } else {
+      passwordError.textContent = "";
+    }
+
     if (!valid) return;
 
-    state.loading = true;
-    state.error = "";
-    render();
+    setFormError(form, "");
+    setFormBusy(form, true, "ENTERING G WORLD…");
 
     try {
       const result = await api("/api/member-login", {
         method: "POST",
         body: JSON.stringify({
-          name,
-          email
+          email,
+          password
         })
       });
 
-      state.member = result.member;
-
-      localStorage.setItem(
-        "gworld",
-        JSON.stringify(state.member)
-      );
+      saveSession(result.member, result.token);
 
       state.loading = false;
       state.history = [];
@@ -3937,11 +4084,12 @@ document.addEventListener("submit", async event => {
       render();
 
     } catch (error) {
-      state.loading = false;
-      state.error =
+      setFormBusy(form, false);
+      setFormError(
+        form,
         error.message ||
-        "We could not find a G WORLD account with those details.";
-      render();
+          "We could not find a G WORLD account with those details."
+      );
     }
 
     return;
@@ -3957,34 +4105,29 @@ document.addEventListener("submit", async event => {
     const category = String(data.category || "general");
 
     if (!message) {
-      state.error = "Please enter your message.";
-      render();
+      setFormError(form, "Please enter your message.");
       return;
     }
 
-    state.loading = true;
-    state.error = "";
-    render();
+    setFormError(form, "");
+    setFormBusy(form, true, "SENDING…");
 
     try {
       await api("/api/support", {
         method: "POST",
         body: JSON.stringify({
-          gworldId: state.member?.gworldId,
           category,
           message
         })
       });
 
-      state.loading = false;
-      state.error = "";
+      setFormBusy(form, false);
       alert("Your message has been sent to the G WORLD Team.");
       goTo("home");
 
     } catch (error) {
-      state.loading = false;
-      state.error = error.message;
-      render();
+      setFormBusy(form, false);
+      setFormError(form, error.message);
     }
 
     return;
@@ -3995,27 +4138,34 @@ document.addEventListener("submit", async event => {
 
     const form = event.target;
     const data = Object.fromEntries(new FormData(form));
+    const email = String(data.email || "").trim();
     const code = String(data.code || "");
 
-    if (!code) {
-      state.error = "Enter your administrator code.";
-      render();
+    if (!email || !code) {
+      setFormError(form, "Enter your account email and administrator code.");
       return;
     }
 
-    state.loading = true;
-    state.error = "";
-    render();
+    setFormError(form, "");
+    setFormBusy(form, true, "VERIFYING…");
 
     try {
       const result = await api("/api/admin/verify", {
         method: "POST",
         body: JSON.stringify({
+          email,
           code
         })
       });
 
-      state.loading = false;
+      // The gate issues an elevated (admin) session token.
+      if (result.token) {
+        state.token = result.token;
+        const saved = JSON.parse(localStorage.getItem("gworld") || "{}");
+        saved.token = result.token;
+        localStorage.setItem("gworld", JSON.stringify(saved));
+      }
+
       state.admin = result.admin || {
         authenticated: true
       };
@@ -4024,10 +4174,11 @@ document.addEventListener("submit", async event => {
       render();
 
     } catch (error) {
-      state.loading = false;
-      state.error =
-        "Administrator verification failed.";
-      render();
+      setFormBusy(form, false);
+      setFormError(
+        form,
+        error.message || "Administrator verification failed."
+      );
     }
 
     return;
@@ -4087,11 +4238,18 @@ function startIntro() {
   }, 2800);
 }
 
+const savedTheme = localStorage.getItem("gworld-theme");
+if (savedTheme) {
+  document.documentElement.dataset.theme = savedTheme;
+}
+
 const savedMember = localStorage.getItem("gworld");
 
 if (savedMember) {
   try {
-    state.member = JSON.parse(savedMember);
+    const parsed = JSON.parse(savedMember);
+    state.member = parsed;
+    state.token = parsed.token || "";
   } catch {
     localStorage.removeItem("gworld");
   }
