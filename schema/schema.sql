@@ -73,6 +73,13 @@ CREATE TABLE IF NOT EXISTS support_messages (
 
 CREATE INDEX IF NOT EXISTS idx_support_messages_member_id ON support_messages(member_id);
 
+/* Operational settings editable via the admin console (key/value) */
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS member_profiles (
  member_id INTEGER PRIMARY KEY,
  avatar_url TEXT,

@@ -918,3 +918,32 @@ button {
   font-size: 24px;
   margin-bottom: 14px;
 }
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--g-panel);
+  color: var(--g-text);
+  border: 1px solid var(--g-border);
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: min(520px, calc(100vw - 32px));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 1000;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

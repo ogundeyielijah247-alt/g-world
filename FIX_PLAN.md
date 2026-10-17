@@ -1,5 +1,9 @@
 # G WORLD — Fix Plan (Step-by-Step Correction Plan)
 
+> **Status:** S1–S9 and S10–S12 executed and verified (unit tests + live API
+> smoke + all-52-screens render smoke). S13 is documented in README §8 and
+> remains execution-time work at real deploy.
+
 This document turns every issue from `ANALYSIS.md` into an ordered, executable correction step. Each step lists **files touched → exact changes → how to verify → done when**. Steps are sequenced so security fixes land first and later work never builds on a broken foundation.
 
 Branch: `arena/895ac0b5-g-world` · Execute in order (S1 → S13).

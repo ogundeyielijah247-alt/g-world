@@ -287,6 +287,46 @@ async function hasActiveAccess(env, memberId) {
   return !!row;
 }
 
+/* =========================================================
+   Settings (admin-editable operational values)
+   ========================================================= */
+
+const SETTINGS_DEFAULTS = {
+  payment_amount: "3000",
+  payment_provider: "OPay",
+  payment_account_number: "8051598490",
+  payment_account_name: "Ogundeji Elijah Olusola",
+};
+
+/**
+ * Resolution order: settings table (admin-edited) > env vars > built-in
+ * defaults — so admins can change payment details without code changes.
+ */
+async function getSettings(env) {
+  const merged = { ...SETTINGS_DEFAULTS };
+  if (env.PAYMENT_AMOUNT) merged.payment_amount = String(env.PAYMENT_AMOUNT);
+  if (env.DB) {
+    try {
+      const { results } = await env.DB.prepare("SELECT key, value FROM settings").all();
+      for (const row of results || []) {
+        if (Object.prototype.hasOwnProperty.call(merged, row.key)) {
+          merged[row.key] = String(row.value);
+        }
+      }
+    } catch {
+      // settings table not created yet — fall back to defaults
+    }
+  }
+  return {
+    payment: {
+      amount: Number(merged.payment_amount) || 3000,
+      provider: merged.payment_provider,
+      accountNumber: merged.payment_account_number,
+      accountName: merged.payment_account_name,
+    },
+  };
+}
+
 function memberPayload(member, extra = {}) {
   return {
     ok: true,
@@ -734,8 +774,10 @@ export default {
         body = {};
       }
 
-      // Amount is server-authoritative; the client value is display-only.
-      const amount = Number(env.PAYMENT_AMOUNT || 3000);
+      // Amount is server-authoritative (settings table > env > default);
+      // the client value is display-only.
+      const settings = await getSettings(env);
+      const amount = settings.payment.amount;
       const courseTitle = clean(body.course, 120) || "G WORLD Learning Access";
 
       try {
@@ -905,6 +947,58 @@ export default {
       ).all();
 
       return json({ ok: true, messages: results || [] }, 200, request, env);
+    }
+
+    /* ---------- Public: settings (payment details are intentionally public) ---------- */
+    if (url.pathname === "/api/settings" && request.method === "GET") {
+      const settings = await getSettings(env);
+      return json({ ok: true, ...settings }, 200, request, env);
+    }
+
+    /* ---------- Admin: update settings ---------- */
+    if (url.pathname === "/api/admin/settings" && request.method === "POST") {
+      const auth = await requireAdmin(request, env);
+      if (auth.error) return json({ ok: false, error: auth.error }, auth.status, request, env);
+
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ ok: false, error: "Invalid request." }, 400, request, env);
+      }
+
+      const amount = Number(body.paymentAmount);
+      if (!Number.isInteger(amount) || amount < 100 || amount > 10000000) {
+        return json({ ok: false, error: "Please enter a valid payment amount." }, 400, request, env);
+      }
+
+      const rows = {
+        payment_amount: String(amount),
+        payment_provider: clean(body.paymentProvider, 60) || "OPay",
+        payment_account_number: clean(body.paymentAccountNumber, 30),
+        payment_account_name: clean(body.paymentAccountName, 120),
+      };
+      if (!rows.payment_account_number || !rows.payment_account_name) {
+        return json({ ok: false, error: "Account number and account name are required." }, 400, request, env);
+      }
+
+      try {
+        await env.DB.batch(
+          Object.entries(rows).map(([key, value]) =>
+            env.DB
+              .prepare(
+                `INSERT INTO settings (key, value) VALUES (?1, ?2)
+                 ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = CURRENT_TIMESTAMP`
+              )
+              .bind(key, value)
+          )
+        );
+        const settings = await getSettings(env);
+        return json({ ok: true, ...settings }, 200, request, env);
+      } catch (error) {
+        console.error("Settings error", error);
+        return json({ ok: false, error: "We could not save the settings." }, 500, request, env);
+      }
     }
 
     return json({ ok: false, error: "Not found." }, 404, request, env);

@@ -16,6 +16,7 @@ const state = {
   data: null,
   supportMessages: [],
   adminPayments: [],
+  settings: null,
   selectedPayment: null,
   selectedCourse: null,
   admin: null
@@ -65,6 +66,22 @@ function goBack() {
   render();
 }
 
+/** Lightweight toast — replaces blocking alert() calls. */
+function showToast(message, ms = 3200) {
+  let toast = document.querySelector("#toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add("show");
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => {
+    toast.classList.remove("show");
+  }, ms);
+}
+
 function clearError() {
   state.error = "";
 }
@@ -108,6 +125,25 @@ async function loadAdminPayments() {
   } catch (error) {
     state.adminPayments = [];
     state.error = error.message;
+  }
+}
+
+/** Payment details: admin settings fall back to built-in PAYMENT defaults. */
+function paymentInfo() {
+  return {
+    amount: state.settings?.amount ?? PAYMENT.amount,
+    provider: state.settings?.provider || PAYMENT.provider,
+    accountNumber: state.settings?.accountNumber || PAYMENT.accountNumber,
+    accountName: state.settings?.accountName || PAYMENT.accountName
+  };
+}
+
+async function loadSettings() {
+  try {
+    const result = await api("/api/settings");
+    state.settings = result.payment || null;
+  } catch {
+    /* offline / unavailable — paymentInfo() falls back to defaults */
   }
 }
 
@@ -295,9 +331,67 @@ function supportButton() {
 }
 
 function render() {
+  const html = screenHTML();
+  if (html !== null) {
+    app.innerHTML = html;
+    // Post-render side effects (original code ran these after innerHTML).
+    if (state.screen === "card") generateMemberQR();
+  }
+}
 
-  if (state.screen === "splash") {
-    app.innerHTML = `
+function screenHTML() {
+  if (state.screen === "splash") return renderSplash();
+  if (state.screen === "entry") return renderEntry();
+  if (state.screen === "onboard") return renderOnboard();
+  if (state.screen === "existing") return renderExisting();
+  if (state.screen === "card") return renderCard();
+  if (state.screen === "home") return renderHome();
+  if (state.screen === "courses") return renderCourses();
+  if (state.screen.startsWith("course-")) return renderCoursePage();
+  if (state.screen === "tech-skills") return renderTechSkills();
+  if (state.screen === "python-course") return renderPythonCourse();
+  if (state.screen === "python-intro") return renderPythonIntro();
+  if (state.screen === "python-practice") return renderPythonPractice();
+  if (state.screen === "ai-tech") return renderAiTech();
+  if (state.screen === "jamb") return renderJamb();
+  if (state.screen === "jamb-information" ||
+    state.screen === "jamb-news") return renderJambInfoNews();
+  if (state.screen === "jamb-syllabus") return renderJambSyllabus();
+  if (state.screen === "jamb-cbt") return renderJambCbt();
+  if (state.screen === "jamb-cbt-science" ||
+    state.screen === "jamb-cbt-commercial" ||
+    state.screen === "jamb-cbt-arts" ||
+    state.screen === "jamb-cbt-general") return renderJambCbtPractice();
+  if (state.screen === "jamb-combinations") return renderJambCombinations();
+  if (state.screen === "combination-result") return renderCombinationResult();
+  if (state.screen === "work-ready") return renderWorkReady();
+  if (state.screen === "work-course") return renderWorkCourse();
+  if (state.screen === "payment") return renderPayment();
+  if (state.screen === "payment-status") return renderPaymentStatus();
+  if (state.screen === "payment-rejected") return renderPaymentRejected();
+  if (state.screen === "support") return renderSupport();
+  if (state.screen === "certificate") return renderCertificate();
+  if (state.screen === "project-writer") return renderProjectWriter();
+  if (state.screen === "opportunities" ||
+    state.screen === "research" ||
+    state.screen === "academic") return renderInfoHub();
+  if (state.screen === "admin-gate") return renderAdminGate();
+  if (state.screen === "admin") return renderAdmin();
+  if (state.screen === "admin-payments") return renderAdminPayments();
+  if (state.screen === "admin-support") return renderAdminSupport();
+  if (state.screen === "admin-content") return renderAdminContent();
+  if (state.screen === "admin-jamb") return renderAdminJamb();
+  if (state.screen === "admin-information") return renderAdminInformation();
+  if (state.screen === "admin-certificates") return renderAdminCertificates();
+  if (state.screen === "admin-members") return renderAdminMembers();
+  if (state.screen === "admin-monitoring") return renderAdminMonitoring();
+  if (state.screen === "admin-cleanup") return renderAdminCleanup();
+  if (state.screen === "admin-settings") return renderAdminSettings();
+  return null;
+}
+
+function renderSplash() {
+  return `
       <main class="intro" aria-label="Entering G WORLD">
         <div class="intro-glow"></div>
 
@@ -311,11 +405,10 @@ function render() {
         <div class="intro-status">ENTERING G WORLD</div>
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "entry") {
-    app.innerHTML = `
+function renderEntry() {
+  return `
       <main class="center enter-screen">
         <section class="panel">
 
@@ -351,11 +444,10 @@ function render() {
         </section>
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "onboard") {
-    app.innerHTML = `
+function renderOnboard() {
+  return `
       <main class="center enter-screen">
         <section class="panel">
 
@@ -464,11 +556,10 @@ function render() {
         </section>
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "existing") {
-    app.innerHTML = `
+function renderExisting() {
+  return `
       <main class="center enter-screen">
         <section class="panel">
 
@@ -541,13 +632,11 @@ function render() {
         </section>
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "card") {
-    const member = state.member;
-
-    app.innerHTML = `
+function renderCard() {
+  const member = state.member;
+  return `
       <main class="center">
 
         <div class="card">
@@ -617,15 +706,11 @@ function render() {
 
       </main>
     `;
+}
 
-    generateMemberQR();
-    return;
-  }
-
-  if (state.screen === "home") {
-    const m = state.member;
-
-    app.innerHTML = `
+function renderHome() {
+  const m = state.member;
+  return `
       <main class="home">
 
         ${commonNav(false)}
@@ -756,11 +841,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "courses") {
-    app.innerHTML = `
+function renderCourses() {
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -843,11 +927,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen.startsWith("course-")) {
-    const courseMap = {
+function renderCoursePage() {
+  const courseMap = {
       "course-accounting": {
         title: "Accounting",
         description:
@@ -956,11 +1039,9 @@ function render() {
         ]
       }
     };
-
-    const course = courseMap[state.screen] || courseMap["course-accounting"];
-    state.selectedCourse = course;
-
-    app.innerHTML = `
+  const course = courseMap[state.screen] || courseMap["course-accounting"];
+  state.selectedCourse = course;
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -1042,11 +1123,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "tech-skills") {
-    app.innerHTML = `
+function renderTechSkills() {
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -1130,11 +1210,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "python-course") {
-    const lessons = [
+function renderPythonCourse() {
+  const lessons = [
       "Introduction to Python",
       "Python Basics",
       "Variables",
@@ -1157,8 +1236,7 @@ function render() {
       "Working with Libraries",
       "Practical Python Projects"
     ];
-
-    app.innerHTML = `
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -1223,11 +1301,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "python-intro") {
-    app.innerHTML = `
+function renderPythonIntro() {
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -1356,11 +1433,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "python-practice") {
-    app.innerHTML = `
+function renderPythonPractice() {
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -1435,11 +1511,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "ai-tech") {
-    app.innerHTML = `
+function renderAiTech() {
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -1507,11 +1582,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "jamb") {
-    app.innerHTML = `
+function renderJamb() {
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -1585,19 +1659,14 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (
-    state.screen === "jamb-information" ||
-    state.screen === "jamb-news"
-  ) {
-    const title =
+function renderJambInfoNews() {
+  const title =
       state.screen === "jamb-information"
         ? "JAMB Information"
         : "JAMB News";
-
-    app.innerHTML = `
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -1656,11 +1725,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "jamb-syllabus") {
-    const subjects = [
+function renderJambSyllabus() {
+  const subjects = [
       "English Language",
       "Mathematics",
       "Physics",
@@ -1676,8 +1744,7 @@ function render() {
       "CRS",
       "IRS"
     ];
-
-    app.innerHTML = `
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -1723,11 +1790,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "jamb-cbt") {
-    app.innerHTML = `
+function renderJambCbt() {
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -1793,23 +1859,16 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (
-    state.screen === "jamb-cbt-science" ||
-    state.screen === "jamb-cbt-commercial" ||
-    state.screen === "jamb-cbt-arts" ||
-    state.screen === "jamb-cbt-general"
-  ) {
-    const labels = {
+function renderJambCbtPractice() {
+  const labels = {
       "jamb-cbt-science": "SCIENCE",
       "jamb-cbt-commercial": "COMMERCIAL",
       "jamb-cbt-arts": "ARTS",
       "jamb-cbt-general": "OTHER SUBJECTS"
     };
-
-    app.innerHTML = `
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -1867,11 +1926,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "jamb-combinations") {
-    const courses = [
+function renderJambCombinations() {
+  const courses = [
       "Accounting",
       "Medicine and Surgery",
       "Computer Science",
@@ -1889,8 +1947,7 @@ function render() {
       "Education",
       "Architecture"
     ];
-
-    app.innerHTML = `
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -1949,13 +2006,11 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "combination-result") {
-    const course = state.selectedCourse || "Selected Course";
-
-    app.innerHTML = `
+function renderCombinationResult() {
+  const course = state.selectedCourse || "Selected Course";
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -2030,11 +2085,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "work-ready") {
-    const courses = [
+function renderWorkReady() {
+  const courses = [
       ["Quality Ownership", "Understand ownership of quality in the workplace."],
       ["Customer Service", "Learn how to serve customers professionally."],
       ["Work Ethics", "Understand professional behaviour and responsibility."],
@@ -2048,8 +2102,7 @@ function render() {
       ["Conflict Management", "Handle workplace disagreements constructively."],
       ["Adaptability", "Prepare for changing workplace environments."]
     ];
-
-    app.innerHTML = `
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -2112,11 +2165,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "work-course") {
-    const course = {
+function renderWorkCourse() {
+  const course = {
       title: "Work Ready Course",
       modules: [
         "Understand the workplace",
@@ -2130,10 +2182,8 @@ function render() {
         "Certificate"
       ]
     };
-
-    state.selectedCourse = course;
-
-    app.innerHTML = `
+  state.selectedCourse = course;
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -2197,15 +2247,14 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "payment") {
-    const course = state.selectedCourse || {
+function renderPayment() {
+  const pay = paymentInfo();
+  const course = state.selectedCourse || {
       title: "G WORLD Learning Access"
     };
-
-    app.innerHTML = `
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -2218,7 +2267,7 @@ function render() {
             <h1>Complete your payment</h1>
 
             <p>
-              This is a one-time payment of ${naira(PAYMENT.amount)}.
+              This is a one-time payment of ${naira(pay.amount)}.
             </p>
           </div>
 
@@ -2226,7 +2275,7 @@ function render() {
 
             <div class="payment-card-top">
               <span>ONE-TIME ACCESS</span>
-              <strong>${naira(PAYMENT.amount)}</strong>
+              <strong>${naira(pay.amount)}</strong>
             </div>
 
             <div class="payment-purpose">
@@ -2250,24 +2299,24 @@ function render() {
 
               <div class="account-row">
                 <span>Provider</span>
-                <strong>${esc(PAYMENT.provider)}</strong>
+                <strong>${esc(pay.provider)}</strong>
               </div>
 
               <div class="account-row">
                 <span>Account Name</span>
-                <strong>${esc(PAYMENT.accountName)}</strong>
+                <strong>${esc(pay.accountName)}</strong>
               </div>
 
               <div class="account-row">
                 <span>Account Number</span>
 
                 <strong>
-                  ${esc(PAYMENT.accountNumber)}
+                  ${esc(pay.accountNumber)}
 
                   <button
                     class="small-action"
                     type="button"
-                    data-copy="${esc(PAYMENT.accountNumber)}"
+                    data-copy="${esc(pay.accountNumber)}"
                   >
                     COPY
                   </button>
@@ -2304,11 +2353,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "payment-status") {
-    app.innerHTML = `
+function renderPaymentStatus() {
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -2349,11 +2397,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "payment-rejected") {
-    app.innerHTML = `
+function renderPaymentRejected() {
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -2394,11 +2441,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "support") {
-    app.innerHTML = `
+function renderSupport() {
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -2482,15 +2528,13 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "certificate") {
-    const course = state.selectedCourse || {
+function renderCertificate() {
+  const course = state.selectedCourse || {
       title: "G WORLD Course"
     };
-
-    app.innerHTML = `
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -2529,11 +2573,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "project-writer") {
-    app.innerHTML = `
+function renderProjectWriter() {
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -2623,21 +2666,15 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (
-    state.screen === "opportunities" ||
-    state.screen === "research" ||
-    state.screen === "academic"
-  ) {
-    const titles = {
+function renderInfoHub() {
+  const titles = {
       opportunities: "Opportunities",
       research: "Discoveries & Research",
       academic: "Academic Resources"
     };
-
-    app.innerHTML = `
+  return `
       <main class="home">
 
         ${commonNav()}
@@ -2692,11 +2729,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "admin-gate") {
-    app.innerHTML = `
+function renderAdminGate() {
+  return `
       <main class="center enter-screen">
 
         <section class="panel admin-gate">
@@ -2759,11 +2795,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "admin") {
-    app.innerHTML = `
+function renderAdmin() {
+  return `
       <main class="home admin-home">
 
         <nav>
@@ -2879,11 +2914,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "admin-payments") {
-    app.innerHTML = `
+function renderAdminPayments() {
+  return `
       <main class="home">
 
         ${adminNav()}
@@ -2949,11 +2983,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "admin-support") {
-    app.innerHTML = `
+function renderAdminSupport() {
+  return `
       <main class="home">
 
         ${adminNav()}
@@ -3010,11 +3043,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "admin-content") {
-    app.innerHTML = `
+function renderAdminContent() {
+  return `
       <main class="home">
 
         ${adminNav()}
@@ -3079,11 +3111,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "admin-jamb") {
-    app.innerHTML = `
+function renderAdminJamb() {
+  return `
       <main class="home">
 
         ${adminNav()}
@@ -3147,11 +3178,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "admin-information") {
-    app.innerHTML = `
+function renderAdminInformation() {
+  return `
       <main class="home">
 
         ${adminNav()}
@@ -3205,11 +3235,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "admin-certificates") {
-    app.innerHTML = `
+function renderAdminCertificates() {
+  return `
       <main class="home">
 
         ${adminNav()}
@@ -3265,11 +3294,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "admin-members") {
-    app.innerHTML = `
+function renderAdminMembers() {
+  return `
       <main class="home">
 
         ${adminNav()}
@@ -3305,11 +3333,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "admin-monitoring") {
-    app.innerHTML = `
+function renderAdminMonitoring() {
+  return `
       <main class="home">
 
         ${adminNav()}
@@ -3386,11 +3413,10 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "admin-cleanup") {
-    app.innerHTML = `
+function renderAdminCleanup() {
+  return `
       <main class="home">
 
         ${adminNav()}
@@ -3455,11 +3481,11 @@ function render() {
 
       </main>
     `;
-    return;
-  }
+}
 
-  if (state.screen === "admin-settings") {
-    app.innerHTML = `
+function renderAdminSettings() {
+  const pay = paymentInfo();
+  return `
       <main class="home">
 
         ${adminNav()}
@@ -3479,25 +3505,57 @@ function render() {
 
         <section class="panel">
 
-          <div class="setting-row">
-            <span>Payment Amount</span>
-            <strong>${naira(PAYMENT.amount)}</strong>
-          </div>
+          <form id="settings-form" novalidate>
 
-          <div class="setting-row">
-            <span>Payment Provider</span>
-            <strong>${esc(PAYMENT.provider)}</strong>
-          </div>
+            <label>
+              Payment Amount (₦)
+              <input
+                name="paymentAmount"
+                type="number"
+                required
+                min="100"
+                max="10000000"
+                value="${esc(pay.amount)}"
+              >
+            </label>
 
-          <div class="setting-row">
-            <span>Payment Account</span>
-            <strong>${esc(PAYMENT.accountNumber)}</strong>
-          </div>
+            <label>
+              Payment Provider
+              <input
+                name="paymentProvider"
+                required
+                maxlength="60"
+                value="${esc(pay.provider)}"
+              >
+            </label>
 
-          <div class="setting-row">
-            <span>Account Name</span>
-            <strong>${esc(PAYMENT.accountName)}</strong>
-          </div>
+            <label>
+              Payment Account Number
+              <input
+                name="paymentAccountNumber"
+                required
+                maxlength="30"
+                value="${esc(pay.accountNumber)}"
+              >
+            </label>
+
+            <label>
+              Account Name
+              <input
+                name="paymentAccountName"
+                required
+                maxlength="120"
+                value="${esc(pay.accountName)}"
+              >
+            </label>
+
+            <small class="form-error"></small>
+
+            <button class="primary full" type="submit">
+              SAVE SETTINGS
+            </button>
+
+          </form>
 
           <div class="setting-row">
             <span>Information Freshness</span>
@@ -3508,9 +3566,8 @@ function render() {
 
       </main>
     `;
-    return;
-  }
 }
+
 
 function adminNav() {
   return `
@@ -3671,14 +3728,14 @@ document.addEventListener("click", async event => {
   }
 
   if (action === "python-answer-correct") {
-    alert(
+    showToast(
       "Correct. Python is a programming language used to give instructions to a computer."
     );
     return;
   }
 
   if (action === "python-answer-wrong") {
-    alert(
+    showToast(
       "Not quite. Python is a programming language used to give instructions to a computer."
     );
     return;
@@ -3720,7 +3777,7 @@ document.addEventListener("click", async event => {
   }
 
   if (action.startsWith("cbt-start-")) {
-    alert(
+    showToast(
       "CBT session structure is ready. Questions will be loaded from the approved G WORLD question bank."
     );
     return;
@@ -3733,6 +3790,7 @@ document.addEventListener("click", async event => {
 
   if (action === "payment") {
     goTo("payment");
+    loadSettings().then(render);
     return;
   }
 
@@ -3848,6 +3906,7 @@ document.addEventListener("click", async event => {
 
   if (action === "admin-settings") {
     goTo("admin-settings");
+    loadSettings().then(render);
     return;
   }
 
@@ -3871,7 +3930,7 @@ document.addEventListener("click", async event => {
     const paymentId = Number(target.dataset.paymentId || state.selectedPayment?.id || 0);
 
     if (!paymentId) {
-      alert("Select a payment to review.");
+      showToast("Select a payment to review.");
       return;
     }
 
@@ -3884,7 +3943,7 @@ document.addEventListener("click", async event => {
         })
       });
 
-      alert(review === "approve" ? "Payment approved." : "Payment rejected.");
+      showToast(review === "approve" ? "Payment approved." : "Payment rejected.");
       state.screen = "admin-payments";
       await loadAdminPayments();
       render();
@@ -3917,7 +3976,7 @@ document.addEventListener("click", async event => {
         target.textContent = "COPY";
       }, 1500);
     } catch {
-      alert(`Account number: ${target.dataset.copy}`);
+      showToast(`Account number: ${target.dataset.copy}`);
     }
     return;
   }
@@ -4122,7 +4181,7 @@ document.addEventListener("submit", async event => {
       });
 
       setFormBusy(form, false);
-      alert("Your message has been sent to the G WORLD Team.");
+      showToast("Your message has been sent to the G WORLD Team.");
       goTo("home");
 
     } catch (error) {
@@ -4197,9 +4256,42 @@ document.addEventListener("submit", async event => {
       title: topic
     };
 
-    alert(
+    showToast(
       "Your project topic has been received. The guided project workflow will continue from here."
     );
+    return;
+  }
+
+  if (event.target.id === "settings-form") {
+    event.preventDefault();
+
+    const form = event.target;
+    const data = Object.fromEntries(new FormData(form));
+
+    setFormError(form, "");
+    setFormBusy(form, true, "SAVING…");
+
+    try {
+      const result = await api("/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({
+          paymentAmount: data.paymentAmount,
+          paymentProvider: data.paymentProvider,
+          paymentAccountNumber: data.paymentAccountNumber,
+          paymentAccountName: data.paymentAccountName
+        })
+      });
+
+      state.settings = result.payment;
+      setFormBusy(form, false);
+      showToast("Settings saved.");
+
+    } catch (error) {
+      setFormBusy(form, false);
+      setFormError(form, error.message);
+    }
+
+    return;
   }
 });
 
@@ -4257,3 +4349,4 @@ if (savedMember) {
 
 render();
 startIntro();
+loadSettings();

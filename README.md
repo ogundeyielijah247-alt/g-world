@@ -125,3 +125,21 @@ Admin API routes require an **admin session**, obtained via
 ```bash
 npm test   # node --test — covers validation, escaping, IDs and password hashing
 ```
+
+## 8. Production deploy checklist
+
+1. Apply schema (fresh: `schema/schema.sql`; existing DB: run both files in
+   `schema/migrations/` in order).
+2. `npm run build && npx wrangler deploy` (root `wrangler.toml` — single
+   origin, SPA + API together).
+3. Set production vars/secrets:
+   - `ALLOWED_ORIGINS = "https://your-g-world-domain"`
+   - `ENVIRONMENT = "production"`
+   - `npx wrangler secret put ADMIN_ACCESS_CODE` (and/or create `admin_users` rows)
+4. Enable **Cloudflare Rate Limiting** rules on `/api/register`,
+   `/api/member-login`, `/api/admin/verify` and `/verify/*`.
+5. Smoke: register → card QR → scan `/verify` on a phone → login →
+   send support message → submit payment → admin approve → confirm
+   `access: true` on `/api/payment/status`.
+6. Payment details can then be changed from **Admin → Settings** (stored in
+   the `settings` table) without code changes.
