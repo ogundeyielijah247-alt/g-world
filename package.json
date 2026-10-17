@@ -1,15 +1,17 @@
 {
   "name": "g-world-phase-1",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
-    "vite": "^7.1.0",
-    "typescript": "^5.8.0",
     "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "vite": "^7.1.0"
   }
 }
