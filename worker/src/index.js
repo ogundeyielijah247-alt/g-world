@@ -675,7 +675,7 @@ export default {
       }
     }
 
-    /* ---------- Public: member login (email + password) ---------- */
+    /* ---------- Public: member login (email or phone + password) ---------- */
     if (url.pathname === "/api/member-login" && request.method === "POST") {
       if (!env.DB) {
         return json({ ok: false, error: "Database is not connected yet." }, 503, request, env);
@@ -691,11 +691,16 @@ export default {
         return json({ ok: false, error: "Invalid request." }, 400, request, env);
       }
 
-      const email = normalizeEmail(clean(body.email, 120));
+      // Keep the original email payload compatible with existing clients.
+      const identifier = clean(body.identifier ?? body.email, 120);
+      const isEmail = identifier.includes("@");
+      const identity = isEmail ? normalizeEmail(identifier) : normalizePhone(identifier);
       const password = String(body.password ?? "");
 
-      if (!validEmail(email) || !email) {
-        return json({ ok: false, field: "email", error: "Please enter a valid email." }, 400, request, env);
+      if (!identifier || (isEmail
+        ? !validEmail(identity)
+        : !/^[+\d\s().-]+$/.test(identifier) || !validPhone(identity))) {
+        return json({ ok: false, field: "identifier", error: "Please enter your registered email or phone number." }, 400, request, env);
       }
       if (!password) {
         return json({ ok: false, field: "password", error: "Please enter your password." }, 400, request, env);
@@ -707,10 +712,10 @@ export default {
             `SELECT id, gworld_id, full_name, phone, email, status, created_at,
                     password_hash, password_salt
                FROM members
-              WHERE lower(email) = ?1
+              WHERE ${isEmail ? "lower(email)" : "phone"} = ?1
               LIMIT 1`
           )
-          .bind(email)
+          .bind(identity)
           .first();
 
         const valid =

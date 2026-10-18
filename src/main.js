@@ -663,6 +663,7 @@ function renderOnboard() {
                 placeholder="you@example.com"
                 maxlength="120"
               >
+              <small>If you leave email blank, sign in with your phone number.</small>
               <small class="field-error" data-error="email"></small>
             </label>
 
@@ -742,17 +743,17 @@ function renderExisting() {
           <form id="existing-form" novalidate>
 
             <label>
-              Email
+              Email or phone number
               <input
-                name="email"
-                type="email"
+                name="identifier"
+                type="text"
                 required
-                autocomplete="email"
-                placeholder="you@example.com"
+                autocomplete="username"
+                placeholder="Your registered email or phone number"
                 maxlength="120"
               >
               <small class="field-error"
-                data-error="existing-email"></small>
+                data-error="existing-identifier"></small>
             </label>
 
             <label>
@@ -4169,24 +4170,24 @@ document.addEventListener("submit", async event => {
     const form = event.target;
     const data = Object.fromEntries(new FormData(form));
 
-    const email = String(data.email || "").trim();
+    const identifier = String(data.identifier || "").trim();
     const password = String(data.password || "");
 
     let valid = true;
 
-    const emailError = form.querySelector(
-      '[data-error="existing-email"]'
+    const identifierError = form.querySelector(
+      '[data-error="existing-identifier"]'
     );
 
     const passwordError = form.querySelector(
       '[data-error="existing-password"]'
     );
 
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
-      emailError.textContent = "Please enter a valid email.";
+    if (!identifier) {
+      identifierError.textContent = "Please enter your registered email or phone number.";
       valid = false;
     } else {
-      emailError.textContent = "";
+      identifierError.textContent = "";
     }
 
     if (!password) {
@@ -4205,7 +4206,7 @@ document.addEventListener("submit", async event => {
       const result = await api("/api/member-login", {
         method: "POST",
         body: JSON.stringify({
-          email,
+          identifier,
           password
         })
       });
