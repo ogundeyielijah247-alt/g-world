@@ -14,7 +14,7 @@ real password + server-side session before any private data is returned.
 6. Digital member card with a real verification QR
 7. Enter G WORLD
 
-Returning members sign in with **email + password** (no more name-only login).
+Returning members sign in with **email or registered phone number + password**. Email is optional during registration; members who leave it blank can return using their phone number. Nigerian local and +234 phone formats are supported. The login API accepts `{ identifier, password }` and remains compatible with `{ email, password }`.
 
 ## Architecture
 

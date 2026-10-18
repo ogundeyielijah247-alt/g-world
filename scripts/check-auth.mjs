@@ -8,6 +8,9 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const base = 'http://127.0.0.1:5173';
 const email = `preview-smoke-${randomUUID()}@example.invalid`;
 const password = randomBytes(32).toString('base64url');
+const phone = `080${String(randomInt(100_000_000)).padStart(8, '0')}`;
+const phoneOnly = `081${String(randomInt(100_000_000)).padStart(8, '0')}`;
+const phoneOnlyName = `Temporary Phone Only ${randomUUID()}`;
 let attemptedRegistration = false;
 async function request(path, { body, token, method = 'GET' } = {}) {
   try {
@@ -27,7 +30,7 @@ async function check() {
   assert.ok(status.service === 'G WORLD API' && status.environment === 'development', 'Refusing to create a test account outside the local development environment.');
   assert.equal((await request('/api/ready')).status, 200, 'Local account tables are unavailable. Run npm run db:local.');
   console.log('PASS: API reachable through frontend; account tables ready.');
-  const account = { name: 'Temporary Preview Smoke Test', email, phone: `080${String(randomInt(100_000_000)).padStart(8, '0')}`, password };
+  const account = { name: 'Temporary Preview Smoke Test', email, phone, password };
   attemptedRegistration = true;
   const registered = await request('/api/register', { method: 'POST', body: account });
   assert.equal(registered.status, 201, 'Temporary registration failed.');
@@ -41,6 +44,24 @@ async function check() {
   assert.equal((await request('/api/me', { token: session.token })).status, 200, 'Authenticated session check failed.');
   assert.equal((await request('/api/auth/logout', { method: 'POST', token: session.token })).status, 200, 'Logout failed.');
   assert.equal((await request('/api/me', { token: session.token })).status, 401, 'Logged-out session should no longer work.');
+  for (const identifier of [email.toUpperCase(), phone, `+234 ${phone.slice(1)}`]) {
+    const response = await request('/api/member-login', { method: 'POST', body: { identifier, password } });
+    assert.equal(response.status, 200, 'Email/phone identifier login failed.');
+    const signedIn = await response.json();
+    assert.equal(signedIn.member.gworldId, session.member.gworldId);
+    await request('/api/auth/logout', { method: 'POST', token: signedIn.token });
+  }
+  const noEmail = await request('/api/register', { method: 'POST', body: { name: phoneOnlyName, phone: phoneOnly, password } });
+  assert.equal(noEmail.status, 201, 'Registration without optional email failed.');
+  const phoneAccount = await noEmail.json();
+  await request('/api/auth/logout', { method: 'POST', token: phoneAccount.token });
+  const phoneLogin = await request('/api/member-login', { method: 'POST', body: { identifier: phoneOnly, password } });
+  assert.equal(phoneLogin.status, 200, 'An account registered without email must be able to sign in.');
+  const phoneSession = await phoneLogin.json();
+  assert.equal(phoneSession.member.gworldId, phoneAccount.member.gworldId);
+  assert.equal((await request('/api/me', { token: phoneSession.token })).status, 200);
+  await request('/api/auth/logout', { method: 'POST', token: phoneSession.token });
+  console.log('PASS: email and normalized phone login; registration and return login without email.');
   console.log('PASS: registration, duplicate rejection, wrong-password rejection, login, session validation, logout and session revocation.');
 }
 try {
@@ -50,9 +71,10 @@ try {
   process.exitCode = 1;
 } finally {
   if (attemptedRegistration) {
-    // UUID email contains no SQL metacharacters; target only this script's fixture.
-    const member = `SELECT id FROM members WHERE email = '${email}'`;
-    const sql = `DELETE FROM audit_events WHERE member_id IN (${member}); DELETE FROM sessions WHERE member_id IN (${member}); DELETE FROM member_profiles WHERE member_id IN (${member}); DELETE FROM members WHERE email = '${email}';`;
+    // UUID fixture markers contain no SQL metacharacters. Never delete by phone:
+    // a duplicate phone could belong to a pre-existing local account.
+    const member = `SELECT id FROM members WHERE email = '${email}' OR full_name = '${phoneOnlyName}'`;
+    const sql = `DELETE FROM audit_events WHERE member_id IN (${member}); DELETE FROM sessions WHERE member_id IN (${member}); DELETE FROM member_profiles WHERE member_id IN (${member}); DELETE FROM members WHERE email = '${email}' OR full_name = '${phoneOnlyName}';`;
     try {
       execFileSync(process.execPath, ['node_modules/wrangler/bin/wrangler.js', 'd1', 'execute', 'g-world', '--local', '--config', 'worker/wrangler.toml', '--command', sql], { cwd: root, stdio: 'pipe', timeout: 30_000 });
       console.log('Temporary local account and related test records removed.');
