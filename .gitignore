@@ -2,3 +2,12 @@ node_modules/
 dist/
 .env
 .wrangler/
+
+playwright-report/
+test-results/
+
+# Local deployment variables may contain secrets.
+.dev.vars
+.dev.vars.*
+.env.*
+!.env.example

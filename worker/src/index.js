@@ -163,14 +163,17 @@ function allowedOrigin(env) {
 function corsHeaders(request, env) {
   const list = allowedOrigin(env);
   const origin = request.headers.get("Origin");
-  const allow = origin && list.includes(origin) ? origin : (list[0] || "");
+  const allow = origin && list.includes(origin) ? origin : "";
   const headers = {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
   };
-  if (allow) headers["Access-Control-Allow-Origin"] = allow;
+  if (allow) {
+    headers["Access-Control-Allow-Origin"] = allow;
+    headers["Access-Control-Allow-Credentials"] = "true";
+  }
   return headers;
 }
 
@@ -203,7 +206,8 @@ function extractToken(request) {
   if (auth.startsWith("Bearer ")) return auth.slice(7).trim();
   const cookie = request.headers.get("Cookie") || "";
   const match = cookie.match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([^;]+)`));
-  return match ? decodeURIComponent(match[1]) : "";
+  try { return match ? decodeURIComponent(match[1]) : ""; }
+  catch { return ""; } // Malformed cookies are invalid sessions, not Worker errors.
 }
 
 async function createSession(env, memberId, admin = false) {
@@ -254,7 +258,8 @@ async function requireAuth(request, env) {
   if (!session) {
     return { error: "Your session is invalid or has ended.", status: 401 };
   }
-  if (new Date(session.expires_at).getTime() < Date.now()) {
+  const expiresAt = new Date(session.expires_at).getTime();
+  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
     await env.DB.prepare("DELETE FROM sessions WHERE id = ?1").bind(session.session_id).run();
     return { error: "Your session has expired.", status: 401 };
   }
@@ -438,7 +443,9 @@ export default {
 
     /* ---------- Public: member verification (QR target) ---------- */
     if (url.pathname.startsWith("/verify/") && request.method === "GET") {
-      const gworldId = decodeURIComponent(url.pathname.slice("/verify/".length)).trim();
+      let gworldId;
+      try { gworldId = decodeURIComponent(url.pathname.slice("/verify/".length)).trim(); }
+      catch { return new Response("Invalid G WORLD ID.", { status: 400, headers: HTML_SECURITY_HEADERS }); }
 
       if (!gworldId) {
         return new Response("Invalid G WORLD ID.", {
@@ -496,6 +503,43 @@ export default {
       );
     }
 
+    /* Readiness checks authentication tables without returning member data. */
+    if (url.pathname === "/api/ready" && request.method === "GET") {
+      if (!env.DB) return json({ ok: false, error: "Account service is not ready." }, 503, request, env);
+      try {
+        const checks = {
+          members: "id, gworld_id, full_name, phone, email, password_hash, password_salt, status, created_at, updated_at",
+          sessions: "id, member_id, token_hash, admin, created_at, expires_at",
+          admin_users: "member_id, password_hash, password_salt, role",
+          member_profiles: "member_id",
+          audit_events: "member_id, event_type, metadata_json",
+          payments: "member_id, status",
+        };
+        for (const [table, columns] of Object.entries(checks)) {
+          await env.DB.prepare(`SELECT ${columns} FROM ${table} LIMIT 0`).all();
+        }
+        return json({ ok: true, service: "G WORLD account service" }, 200, request, env);
+      } catch {
+        return json({ ok: false, error: "Account service is not ready." }, 503, request, env);
+      }
+    }
+
+    /* Public aggregate totals only. No identities or fabricated instructor count. */
+    if (url.pathname === "/api/stats" && request.method === "GET") {
+      if (!env.DB) return json({ ok: false, error: "Statistics unavailable." }, 503, request, env);
+      const count = async sql => {
+        try {
+          const row = await env.DB.prepare(sql).first();
+          return Number.isSafeInteger(row?.total) && row.total >= 0 ? row.total : null;
+        } catch { return null; } // Legacy/missing tables are unknown, not zero.
+      };
+      const [students, achievements] = await Promise.all([
+        count("SELECT COUNT(*) AS total FROM members m WHERE NOT EXISTS (SELECT 1 FROM admin_users a WHERE a.member_id = m.id)"),
+        count("SELECT COUNT(*) AS total FROM course_enrollments WHERE status = 'COMPLETED' AND completed_at IS NOT NULL"),
+      ]);
+      return json({ ok: true, metrics: { achievements, students, instructors: null } }, 200, request, env);
+    }
+
     /* ---------- Public: registration ---------- */
     if (url.pathname === "/api/register" && request.method === "POST") {
       if (!env.DB) return json({ ok: false, error: "Database is not connected yet." }, 503, request, env);
@@ -503,6 +547,9 @@ export default {
       let body;
       try {
         body = await request.json();
+        if (!body || typeof body !== "object" || Array.isArray(body)) {
+          return json({ ok: false, error: "Invalid request." }, 400, request, env);
+        }
       } catch {
         return json({ ok: false, error: "Invalid request." }, 400, request, env);
       }
@@ -637,6 +684,9 @@ export default {
       let body;
       try {
         body = await request.json();
+        if (!body || typeof body !== "object" || Array.isArray(body)) {
+          return json({ ok: false, error: "Invalid request." }, 400, request, env);
+        }
       } catch {
         return json({ ok: false, error: "Invalid request." }, 400, request, env);
       }
@@ -739,6 +789,9 @@ export default {
       let body;
       try {
         body = await request.json();
+        if (!body || typeof body !== "object" || Array.isArray(body)) {
+          return json({ ok: false, error: "Invalid request." }, 400, request, env);
+        }
       } catch {
         return json({ ok: false, error: "Invalid request." }, 400, request, env);
       }
@@ -770,6 +823,9 @@ export default {
       let body;
       try {
         body = await request.json();
+        if (!body || typeof body !== "object" || Array.isArray(body)) {
+          return json({ ok: false, error: "Invalid request." }, 400, request, env);
+        }
       } catch {
         body = {};
       }
@@ -783,9 +839,9 @@ export default {
       try {
         const result = await env.DB.prepare(
           `INSERT INTO payments (member_id, amount, provider, course_title, status)
-           VALUES (?1, ?2, 'OPay', ?3, 'PENDING')`
+           VALUES (?1, ?2, ?3, ?4, 'PENDING')`
         )
-          .bind(auth.memberId, amount, courseTitle)
+          .bind(auth.memberId, amount, settings.payment.provider, courseTitle)
           .run();
 
         return json(
@@ -837,6 +893,9 @@ export default {
       let body;
       try {
         body = await request.json();
+        if (!body || typeof body !== "object" || Array.isArray(body)) {
+          return json({ ok: false, error: "Invalid request." }, 400, request, env);
+        }
       } catch {
         return json({ ok: false, error: "Invalid request." }, 400, request, env);
       }
@@ -906,6 +965,9 @@ export default {
       let body;
       try {
         body = await request.json();
+        if (!body || typeof body !== "object" || Array.isArray(body)) {
+          return json({ ok: false, error: "Invalid request." }, 400, request, env);
+        }
       } catch {
         return json({ ok: false, error: "Invalid request." }, 400, request, env);
       }
@@ -963,6 +1025,9 @@ export default {
       let body;
       try {
         body = await request.json();
+        if (!body || typeof body !== "object" || Array.isArray(body)) {
+          return json({ ok: false, error: "Invalid request." }, 400, request, env);
+        }
       } catch {
         return json({ ok: false, error: "Invalid request." }, 400, request, env);
       }

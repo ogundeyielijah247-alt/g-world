@@ -1,5 +1,12 @@
+import { cachedToken, validMember } from "./session.js";
+import { enhanceSubpage, pageIllustration } from "./page-design.js";
+import { FACULTIES, EXTRA_COURSES, facultyForScreen } from "./catalogue.js";
+import { subjectSection, facultySection, facultyCards, learningInvitation, accessSection, approachSection, resourceSection, homeFooter } from "./home-sections.js";
 import "./style.css";
 import QRCode from "qrcode";
+import { mountHero, homeSlider } from "./hero.js";
+import { icon, sectionIcon } from "./icons.js";
+import { formatTotal, PLACEHOLDER_METRICS } from "./metrics.js";
 
 const app = document.querySelector("#app");
 
@@ -17,6 +24,7 @@ const state = {
   supportMessages: [],
   adminPayments: [],
   settings: null,
+  metrics: PLACEHOLDER_METRICS,
   selectedPayment: null,
   selectedCourse: null,
   admin: null
@@ -72,6 +80,8 @@ function showToast(message, ms = 3200) {
   if (!toast) {
     toast = document.createElement("div");
     toast.id = "toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
     document.body.appendChild(toast);
   }
   toast.textContent = message;
@@ -115,6 +125,7 @@ function saveSession(member, token) {
   };
   state.member = { ...member };
   state.token = token || "";
+  localStorage.removeItem("gworld-logout-pending");
   localStorage.setItem("gworld", JSON.stringify(minimal));
 }
 
@@ -142,15 +153,25 @@ async function loadSettings() {
   try {
     const result = await api("/api/settings");
     state.settings = result.payment || null;
+    const pay = paymentInfo();
+    app.querySelectorAll('[data-payment-price]').forEach(price => { price.textContent = naira(pay.amount); });
+    for (const key of ['provider', 'accountName', 'accountNumber']) {
+      app.querySelectorAll(`[data-payment-detail="${key}"]`).forEach(node => { node.textContent = pay[key]; });
+    }
+    app.querySelectorAll('[data-payment-copy]').forEach(button => { button.dataset.copy = pay.accountNumber; });
+    const homePrice = app.querySelector('[data-home-price]');
+    if (homePrice) homePrice.innerHTML = `${naira(paymentInfo().amount)}<small>one-time payment, approval required</small>`;
   } catch {
     /* offline / unavailable — paymentInfo() falls back to defaults */
   }
 }
 
 function clearSession() {
-  if (state.token) {
-    api("/api/auth/logout", { method: "POST" }).catch(() => {});
-  }
+  // Preserve logout intent if an offline API cannot clear its HttpOnly cookie.
+  localStorage.setItem("gworld-logout-pending", "1");
+  api("/api/auth/logout", { method: "POST" })
+    .then(() => localStorage.removeItem("gworld-logout-pending"))
+    .catch(() => {});
   localStorage.removeItem("gworld");
   state.member = null;
   state.token = "";
@@ -168,15 +189,30 @@ async function api(path, options = {}) {
     headers.Authorization = `Bearer ${state.token}`;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const requestToken = state.token;
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
+    signal: AbortSignal.timeout(12000),
     ...options,
     headers
-  });
+    });
+  } catch {
+    throw new Error("Cannot reach the G WORLD service. Check your connection and try again.");
+  }
 
-  const result = await response.json().catch(() => ({}));
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error("The G WORLD service is unavailable or incorrectly configured. Please try again later.");
+  }
+  if (!result || typeof result !== "object" || Array.isArray(result)) {
+    throw new Error("The G WORLD service returned an invalid response. Please try again later.");
+  }
 
-  if (response.status === 401 && state.token) {
+  if (response.status === 401 && requestToken && state.token === requestToken) {
     // Session expired or was revoked server-side.
     state.token = "";
     state.member = null;
@@ -184,11 +220,15 @@ async function api(path, options = {}) {
     state.history = [];
     state.screen = "entry";
     render();
-    throw new Error(result.error || "Your session has ended. Please sign in again.");
+    const error = new Error(result.error || "Your session has ended. Please sign in again.");
+    error.status = 401;
+    throw error;
   }
 
   if (!response.ok || result.ok === false) {
-    throw new Error(result.error || "G WORLD request failed.");
+    const error = new Error(result.error || "G WORLD request failed.");
+    error.status = response.status;
+    throw error;
   }
 
   return result;
@@ -222,7 +262,7 @@ function certificateHTML(course, member) {
         <div class="certificate-inner">
 
           <div class="certificate-brand">
-            <div class="certificate-g-mark">G</div>
+            <div class="certificate-g-mark">${brandIcon()}</div>
             <div>
               <strong>G WORLD</strong>
               <small>Discover What You Need to Know.</small>
@@ -273,7 +313,7 @@ function certificateHTML(course, member) {
             </div>
 
             <div class="certificate-seal">
-              <b>G</b>
+              ${brandIcon()}
               <span>G WORLD</span>
               <small>VERIFIED</small>
             </div>
@@ -294,25 +334,60 @@ function certificateHTML(course, member) {
   `;
 }
 
-function commonNav(back = true) {
-  return `
-    ${back && state.history.length ? `
-      <button class="link page-back" data-a="back">← Back</button>
-    ` : ""}
+function brandIcon() {
+  return '<img class="brand-icon" src="/assets/gworld-icon.png" alt="" width="48" height="48">';
+}
 
-    <nav>
-      <div class="mini">
-        <b>G</b> G WORLD
-      </div>
+function themeButton() {
+  return `<button class="logout-btn theme-toggle" data-a="theme" aria-label="Switch colour theme" title="Switch colour theme"><svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 15.5A9 9 0 0 1 8.5 4a9 9 0 1 0 11.5 11.5Z"/></svg></button>`;
+}
 
-      <div class="nav-user">
-        <button class="logout-btn" data-a="theme">THEME</button>
-        <span>${esc(state.member?.name || "")}</span>
-        <button class="logout-btn" data-a="logout">LOG OUT</button>
+let heroInstance;
+let renderedScreen;
+const pageTitle = document.querySelector('#page-title');
+function navigationHeader(admin = false) {
+  const links = admin
+    ? [['admin', 'Dashboard'], ['admin-payments', 'Payments'], ['admin-members', 'Members'], ['admin-support', 'Support'], ['admin-settings', 'Settings']]
+    : [['home', 'Home'], ['courses', 'Faculties'], ['tech-skills', 'Tech Skills'], ['jamb', 'JAMB'], ['academic', 'Resources'], ['support', 'Support']];
+  let active = state.screen;
+  if (active.startsWith('course-') || active.startsWith('faculty-')) active = 'courses';
+  if (active.startsWith('python-') || active === 'excel-course' || active === 'ai-tech') active = 'tech-skills';
+  if (active.startsWith('jamb-') || active === 'combination-result') active = 'jamb';
+  if (['opportunities', 'research', 'project-writer'].includes(active)) active = 'academic';
+  return `<header class="site-header">
+    <nav class="site-nav" aria-label="${admin ? 'Administration' : 'Main navigation'}">
+      <button class="mini brand-home" type="button" data-a="${admin ? 'admin' : 'home'}" aria-label="${admin ? 'G WORLD admin dashboard' : 'G WORLD home'}">${brandIcon()}<span>G WORLD${admin ? '<small>ADMINISTRATION</small>' : ''}</span></button>
+      <div class="site-nav-links" id="site-nav-menu">${links.map(([action, label]) => `<button type="button" class="site-nav-link" data-a="${action}" ${active === action ? 'aria-current="page"' : ''}>${label}</button>`).join('')}</div>
+      <div class="site-nav-actions">
+        <span class="site-nav-member" title="${esc(state.member?.name || '')}">${esc(admin ? 'Administrator' : state.member?.name || '')}</span>
+        ${themeButton()}
+        <button type="button" class="nav-signout" data-a="${admin ? 'admin-logout' : 'logout'}" aria-label="LOG OUT"><span>Log out</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M9 4H4v16h5m5-14 6 6-6 6M8 12h12"/></svg></button>
+        <button type="button" class="nav-menu-toggle" data-a="nav-menu" aria-label="Open navigation menu" aria-controls="site-nav-menu" aria-expanded="false"><span></span><span></span><span></span></button>
       </div>
     </nav>
-  `;
+  </header>`;
 }
+
+function commonNav(back = true) {
+  return `${navigationHeader()}${back && state.history.length ? '<button class="link page-back" data-a="back">← Back</button>' : ''}`;
+}
+
+function closeNavigation(returnFocus = false) {
+  const header = app.querySelector('.site-header');
+  const toggle = header?.querySelector('.nav-menu-toggle');
+  if (!toggle) return;
+  header.classList.remove('menu-open');
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.setAttribute('aria-label', 'Open navigation menu');
+  if (returnFocus) toggle.focus();
+}
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && app.querySelector('.site-header.menu-open')) closeNavigation(true);
+});
+document.addEventListener('click', event => {
+  if (!event.target.closest('.site-header')) closeNavigation();
+});
 
 function supportButton() {
   return `
@@ -333,10 +408,94 @@ function supportButton() {
 function render() {
   const html = screenHTML();
   if (html !== null) {
+    const screenChanged = renderedScreen !== state.screen;
+    renderedScreen = state.screen;
+    heroInstance?.destroy();
+    pageTitle?.remove();
     app.innerHTML = html;
+    if (state.screen === 'home') {
+      app.querySelector('main').prepend(pageTitle);
+      heroInstance = mountHero(app.querySelector('.home-slider'));
+    }
+    app.querySelectorAll('article[data-a], article[data-course-combination]').forEach(card => {
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+    });
+    decorateLearningPages();
+    if (screenChanged) {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      if (!['splash', 'entry', 'onboard', 'existing', 'card'].includes(state.screen)) {
+        const main = app.querySelector('main');
+        main.tabIndex = -1;
+        main.focus({ preventScroll: true });
+      }
+    }
     // Post-render side effects (original code ran these after innerHTML).
     if (state.screen === "card") generateMemberQR();
   }
+}
+
+/** Shared visual enhancement only; account, learning and payment workflows stay intact. */
+function decorateLearningPages() {
+  const main = app.querySelector('main');
+  if (!main) return;
+  main.id = 'main-content';
+  if (state.screen === 'splash') return;
+  main.dataset.screen = state.screen;
+  app.querySelectorAll('.form-error, .field-error').forEach((slot, i) => {
+    slot.setAttribute('aria-live', 'polite');
+    slot.id = `form-feedback-${i}`;
+    const field = slot.closest('label')?.querySelector('input, select, textarea');
+    if (field) field.setAttribute('aria-describedby', slot.id);
+  });
+  app.querySelectorAll('.grid article').forEach(card => {
+    const title = card.querySelector('h3')?.textContent || '';
+    const mark = document.createElement('div');
+    mark.className = 'resource-icon';
+    mark.innerHTML = icon(sectionIcon(`${state.screen} ${card.dataset.a || ''} ${title}`.toLowerCase()));
+    card.prepend(mark);
+    if (card.matches('[data-a], [data-course-combination]')) {
+      const affordance = document.createElement('span');
+      affordance.className = 'resource-link';
+      affordance.setAttribute('aria-hidden', 'true');
+      const label = card.dataset.a?.startsWith('python-answer') ? 'Choose answer' : card.dataset.a?.startsWith('cbt-start') ? 'Start practice' : 'Explore';
+      affordance.innerHTML = `${label} ${icon('arrow')}`;
+      card.append(affordance);
+    }
+  });
+  const hero = main.querySelector(':scope > .hero');
+  if (hero) {
+    const mark = document.createElement('div');
+    mark.className = 'page-icon';
+    mark.innerHTML = icon(sectionIcon(state.screen));
+    hero.prepend(mark);
+  }
+  enhanceSubpage(main, state.screen);
+  if (state.screen === 'admin-gate') main.querySelector('.form-brand')?.insertAdjacentHTML('afterend', `<div class="security-hero-art">${pageIllustration('admin-gate')}</div>`);
+  const entry = main.matches('.enter-screen') && state.screen !== 'admin-gate';
+  if (entry) {
+    main.classList.add('has-welcome');
+    const aside = document.createElement('aside');
+    aside.className = 'welcome-aside';
+    aside.innerHTML = `<div class="eyebrow">YOUR WORLD OF LEARNING</div><h2>A little curiosity.<br>A world of possibility.</h2><p>Build your knowledge, develop practical skills and take your next step with G WORLD.</p><ul><li>${icon('book')} Clear learning pathways</li><li>${icon('code')} Practical digital skills</li><li>${icon('cap')} Academic and career guidance</li></ul><div class="welcome-aside-note">Discover What You Need to Know.</div>`;
+    const accountCopy = {
+      entry: ['A little curiosity.<br>A world of possibility.', 'Choose how you would like to enter and discover your next learning pathway.'],
+      onboard: ['Your next chapter<br>starts here.', 'Create your G WORLD account and make room for the skills and knowledge you want to build.'],
+      existing: ['Back to your<br>learning journey.', 'Sign in to reconnect with your roadmaps, learning areas and G WORLD account.']
+    }[state.screen];
+    if (accountCopy) {
+      aside.querySelector('h2').innerHTML = accountCopy[0];
+      aside.querySelector('p').textContent = accountCopy[1];
+      aside.querySelector('ul').outerHTML = `<div class="account-hero-art">${pageIllustration(state.screen)}</div>`;
+    }
+    main.prepend(aside);
+  }
+  app.querySelectorAll('.support-strip').forEach(strip => {
+    const mark = document.createElement('div');
+    mark.className = 'support-icon';
+    mark.innerHTML = icon('chat');
+    strip.prepend(mark);
+  });
 }
 
 function screenHTML() {
@@ -347,8 +506,10 @@ function screenHTML() {
   if (state.screen === "card") return renderCard();
   if (state.screen === "home") return renderHome();
   if (state.screen === "courses") return renderCourses();
+  if (state.screen.startsWith("faculty-")) return renderFaculty();
   if (state.screen.startsWith("course-")) return renderCoursePage();
   if (state.screen === "tech-skills") return renderTechSkills();
+  if (state.screen === "excel-course") return renderExcelCourse();
   if (state.screen === "python-course") return renderPythonCourse();
   if (state.screen === "python-intro") return renderPythonIntro();
   if (state.screen === "python-practice") return renderPythonPractice();
@@ -413,7 +574,7 @@ function renderEntry() {
         <section class="panel">
 
           <div class="form-brand">
-            <span>G</span><b>G WORLD</b>
+            ${brandIcon()}<b>G WORLD</b>
           </div>
 
           <div class="eyebrow">WELCOME TO G WORLD</div>
@@ -425,6 +586,7 @@ function renderEntry() {
             G WORLD account.
           </p>
 
+          ${state.error ? `<p class="form-error" role="status">${esc(state.error)}</p>` : ""}
           <div class="entry-options">
 
             <button class="primary full" data-a="new-member">
@@ -452,7 +614,7 @@ function renderOnboard() {
         <section class="panel">
 
           <div class="form-brand">
-            <span>G</span><b>G WORLD</b>
+            ${brandIcon()}<b>G WORLD</b>
           </div>
 
           <div class="eyebrow">NEW MEMBER</div>
@@ -482,6 +644,8 @@ function renderOnboard() {
               Phone Number
               <input
                 name="phone"
+                type="tel"
+                inputmode="tel"
                 required
                 autocomplete="tel"
                 placeholder="Your phone number"
@@ -564,7 +728,7 @@ function renderExisting() {
         <section class="panel">
 
           <div class="form-brand">
-            <span>G</span><b>G WORLD</b>
+            ${brandIcon()}<b>G WORLD</b>
           </div>
 
           <div class="eyebrow">EXISTING MEMBER</div>
@@ -643,7 +807,7 @@ function renderCard() {
 
           <header>
             <div class="mini">
-              <b>G</b>
+              ${brandIcon()}
 
               <span>
                 <strong>G WORLD</strong>
@@ -711,49 +875,56 @@ function renderCard() {
 function renderHome() {
   const m = state.member;
   return `
-      <main class="home">
+      <main id="main-content" class="home">
 
         ${commonNav(false)}
 
-        <section class="hero">
+        ${homeSlider()}
 
-          <div class="eyebrow">G WORLD</div>
-
-          <h1>Discover what you need to know.</h1>
-
-          <p>
-            Useful knowledge. Clear learning. Practical growth.
-          </p>
-
-        </section>
-
-        <section class="continue">
-
-          <div>
-            <div class="eyebrow">YOUR G WORLD</div>
-
-            <h2>Welcome back, ${esc(m.name)}.</h2>
-
-            <p>
-              Your learning journey is ready for the next step.
-            </p>
+        <section class="home-welcome" aria-labelledby="welcome-heading">
+          <div class="welcome-layout">
+            <div class="welcome-visual">
+              <span class="welcome-dot-pattern" aria-hidden="true"></span>
+              <span class="welcome-orbit" aria-hidden="true"></span>
+              <img class="welcome-graduate" src="/assets/welcome/graduate.webp" alt="An illustrative graduate smiling with a textbook and graduation cap" width="800" height="1000" loading="lazy" decoding="async">
+              <div class="welcome-study-note">${icon('cap')}<span><strong>Your next chapter</strong><small>Learn with purpose. Grow with confidence.</small></span></div>
+              <img class="welcome-classroom" src="/assets/hero/digital-classroom.webp" alt="Students collaborating in a digital classroom" width="320" height="240" loading="lazy" decoding="async">
+            </div>
+            <div class="welcome-content">
+              <div class="eyebrow">WELCOME TO G WORLD</div>
+              <h2 id="welcome-heading">Welcome to your<br>online learning centre.</h2>
+              <p class="welcome-personal">Welcome back, ${esc(m.name)}.</p>
+              <p>Make room for what you want to learn next. G WORLD brings academic foundations, practical digital skills and study guidance together, so you can move forward one clear step at a time.</p>
+              <ul class="welcome-checklist">
+                <li>${icon('check')}<span>Find your direction with clear course roadmaps.</span></li>
+                <li>${icon('check')}<span>Connect new knowledge to practical skills.</span></li>
+                <li>${icon('check')}<span>Build a study routine that works for you.</span></li>
+              </ul>
+              <div class="welcome-actions"><button class="primary" type="button" data-a="courses">Find your next course ${icon('arrow')}</button><div class="welcome-identity"><small>YOUR G WORLD ID</small><code>${esc(m.gworldId)}</code></div></div>
+            </div>
           </div>
-
-          <code>${esc(m.gworldId)}</code>
-
+          <div class="welcome-highlights" aria-label="G WORLD totals">
+            <div>${icon('cap')}<span><strong data-welcome-metric="achievements">${formatTotal(state.metrics?.achievements)}</strong><small>Total achievements</small></span></div>
+            <div>${icon('book')}<span><strong data-welcome-metric="students">${formatTotal(state.metrics?.students)}</strong><small>Total students</small></span></div>
+            <div>${icon('briefcase')}<span><strong data-welcome-metric="instructors">${formatTotal(state.metrics?.instructors)}</strong><small>Total instructors</small></span></div>
+          </div>
+          <p class="welcome-metrics-note">Placeholder totals shown while live metrics are being connected.</p>
         </section>
+
+        ${facultySection()}
+        ${subjectSection()}
 
         <section class="doors">
 
-          <h2>Explore G WORLD</h2>
+          <div class="section-heading"><div><div class="eyebrow">FIND YOUR DIRECTION</div><h2>Explore G WORLD</h2><p>Ten doors to knowledge. Choose where you want to go next.</p></div><span class="section-count">10 learning areas</span></div>
 
           <div class="grid">
 
             <article data-a="courses">
               <small>01</small>
-              <h3>Courses</h3>
+              <h3>Faculties</h3>
               <p>
-                Structured academic and professional learning.
+                Find your direction in the Faculty of Management Science, Faculty of Art or Faculty of Science. Preview a roadmap and plan your next step.
               </p>
             </article>
 
@@ -761,7 +932,7 @@ function renderHome() {
               <small>02</small>
               <h3>Tech Skills</h3>
               <p>
-                Learn practical digital and technology skills.
+                Explore Python, spreadsheets, databases and web development. Start with the basics and connect your learning to practical projects.
               </p>
             </article>
 
@@ -769,7 +940,7 @@ function renderHome() {
               <small>03</small>
               <h3>AI & Technology</h3>
               <p>
-                Keep up with important technology developments.
+                Make sense of AI tools, emerging technologies and research. Explore what they do, where they help, and how to use them thoughtfully.
               </p>
             </article>
 
@@ -777,7 +948,7 @@ function renderHome() {
               <small>04</small>
               <h3>JAMB</h3>
               <p>
-                JAMB information, syllabus, CBT and subject combinations.
+                Organise your exam preparation with syllabus guidance, CBT practice areas and subject-combination information in one place.
               </p>
             </article>
 
@@ -785,7 +956,7 @@ function renderHome() {
               <small>05</small>
               <h3>Opportunities</h3>
               <p>
-                Discover useful opportunities and pathways.
+                Explore pathways for further learning and professional growth. Check eligibility, requirements and deadlines before taking your next step.
               </p>
             </article>
 
@@ -793,7 +964,7 @@ function renderHome() {
               <small>06</small>
               <h3>Discoveries & Research</h3>
               <p>
-                Research, discoveries and important developments.
+                Explore ideas that expand your understanding. Learn to question evidence, interpret findings and connect discoveries to everyday life.
               </p>
             </article>
 
@@ -801,7 +972,7 @@ function renderHome() {
               <small>07</small>
               <h3>Project Writer</h3>
               <p>
-                Understand and build your academic project step by step.
+                Move from a research topic to a clear project structure. Understand your question, plan your methodology and organise each chapter.
               </p>
             </article>
 
@@ -809,7 +980,7 @@ function renderHome() {
               <small>08</small>
               <h3>Academic Resources</h3>
               <p>
-                Useful academic resources and study support.
+                Strengthen your study habits with guidance for reading, research and revision. Build a routine that makes learning more manageable.
               </p>
             </article>
 
@@ -817,7 +988,7 @@ function renderHome() {
               <small>09</small>
               <h3>Work Ready</h3>
               <p>
-                Learn the skills, habits and knowledge needed for work.
+                Develop clearer communication, stronger teamwork and professional habits. Explore the skills that matter beyond the classroom.
               </p>
             </article>
 
@@ -825,7 +996,7 @@ function renderHome() {
               <small>10</small>
               <h3>G WORLD Support</h3>
               <p>
-                Reach out when you need help.
+                Get help with your account, courses, payments or technical questions. Send the team a message with the details of your challenge.
               </p>
             </article>
 
@@ -833,100 +1004,34 @@ function renderHome() {
 
         </section>
 
-        ${supportButton()}
-
-        <footer>
-          G WORLD · Discover What You Need to Know.
-        </footer>
+        ${learningInvitation()}
+        ${accessSection(naira(paymentInfo().amount))}
+        ${approachSection()}
+        ${resourceSection()}
+        ${homeFooter()}
 
       </main>
     `;
 }
 
 function renderCourses() {
-  return `
-      <main class="home">
+  return `<main class="home">${commonNav()}
+    <section class="hero"><div class="eyebrow">ACADEMIC PATHWAYS</div><h1>Find your faculty.<br>Shape your learning journey.</h1><p>Choose a faculty to explore its subjects and introductory roadmaps. Existing management courses remain available; new Art and Science roadmaps are marked as previews.</p></section>
+    <section class="faculty-directory"><h2>Our Faculties</h2><div class="faculty-card-grid">${facultyCards()}</div></section>
+    ${supportButton()}<footer>G WORLD · Discover What You Need to Know.</footer>
+  </main>`;
+}
 
-        ${commonNav()}
-
-        <section class="hero">
-          <div class="eyebrow">COURSES</div>
-
-          <h1>Learn something that moves you forward.</h1>
-
-          <p>
-            Structured learning journeys that help you understand,
-            practise, apply, build and verify what you know.
-          </p>
-        </section>
-
-        <section class="doors">
-
-          <h2>Available Courses</h2>
-
-          <div class="grid">
-
-            <article data-a="course-accounting">
-              <small>01</small>
-              <h3>Accounting</h3>
-              <p>
-                Understand accounting from the foundations through
-                practical learning and application.
-              </p>
-            </article>
-
-            <article data-a="course-economics">
-              <small>02</small>
-              <h3>Economics</h3>
-              <p>
-                Build a clear understanding of economic principles.
-              </p>
-            </article>
-
-            <article data-a="course-business">
-              <small>03</small>
-              <h3>Business Administration</h3>
-              <p>
-                Learn the principles behind organisations and business.
-              </p>
-            </article>
-
-            <article data-a="course-finance">
-              <small>04</small>
-              <h3>Finance</h3>
-              <p>
-                Learn financial concepts and practical applications.
-              </p>
-            </article>
-
-            <article data-a="course-marketing">
-              <small>05</small>
-              <h3>Marketing</h3>
-              <p>
-                Understand customers, markets and marketing practice.
-              </p>
-            </article>
-
-            <article data-a="course-research">
-              <small>06</small>
-              <h3>Research Methodology</h3>
-              <p>
-                Learn how to understand, design and conduct research.
-              </p>
-            </article>
-
-          </div>
-
-        </section>
-
-        ${supportButton()}
-
-        <footer>
-          G WORLD · Discover What You Need to Know.
-        </footer>
-
-      </main>
-    `;
+function renderFaculty() {
+  const faculty = facultyForScreen(state.screen);
+  if (!faculty) return renderCourses();
+  return `<main class="home">${commonNav()}
+    <section class="hero"><div class="eyebrow">G WORLD · FACULTIES</div><h1>${faculty.title}</h1><p>${faculty.description}</p></section>
+    <section class="doors"><h2>Available Courses</h2><div class="grid">${faculty.courses.map(([id,title,description], i) => `<article data-a="${id}"><small>${EXTRA_COURSES[id] ? 'ROADMAP PREVIEW' : String(i+1).padStart(2,'0')}</small><h3>${title}</h3><p>${description}</p></article>`).join('')}</div></section>
+    ${faculty.id !== 'management' ? '<section class="continue"><div><div class="eyebrow">WHAT TO EXPECT</div><h2>A starting point, not a published full course.</h2><p>These introductory roadmaps help you explore the faculty. Full lessons, assessments and paid access are not yet available for these previews.</p></div></section>' : ''}
+    <div class="faculty-return"><button class="secondary" type="button" data-a="courses">← All faculties</button></div>
+    ${supportButton()}<footer>G WORLD · Discover What You Need to Know.</footer>
+  </main>`;
 }
 
 function renderCoursePage() {
@@ -988,7 +1093,7 @@ function renderCoursePage() {
       "course-finance": {
         title: "Finance",
         description:
-          "Learn how financial decisions are understood, analysed and applied.",
+          "Build financial literacy through budgeting, investment principles and risk. Connect each concept to the decisions people and organisations make.",
         modules: [
           "Introduction to Finance",
           "Financial Management",
@@ -1039,7 +1144,7 @@ function renderCoursePage() {
         ]
       }
     };
-  const course = courseMap[state.screen] || courseMap["course-accounting"];
+  const course = EXTRA_COURSES[state.screen] || courseMap[state.screen] || courseMap["course-accounting"];
   state.selectedCourse = course;
   return `
       <main class="home">
@@ -1093,6 +1198,7 @@ function renderCoursePage() {
 
         </section>
 
+        ${course.preview ? `<section class="payment-preview"><div class="eyebrow">ROADMAP PREVIEW</div><h2>Explore the subject before committing.</h2><p>This roadmap is a guide to the topics ahead. Full lessons, assessments and paid access have not been published for this course.</p><button class="secondary" type="button" data-a="${facultyForScreen(state.screen) ? 'faculty-' + facultyForScreen(state.screen).id : 'courses'}">Return to faculty</button></section>` : `
         <section class="payment-preview">
 
           <div class="eyebrow">FULL ACCESS</div>
@@ -1105,7 +1211,7 @@ function renderCoursePage() {
             after completion and review.
           </p>
 
-          <div class="price">${naira(PAYMENT.amount)}</div>
+          <div class="price" data-payment-price>${naira(paymentInfo().amount)}</div>
 
           <small>ONE-TIME PAYMENT</small>
 
@@ -1114,6 +1220,8 @@ function renderCoursePage() {
           </button>
 
         </section>
+
+        `}
 
         ${supportButton()}
 
@@ -1156,22 +1264,22 @@ function renderTechSkills() {
               </p>
             </article>
 
-            <article>
+            <article data-a="excel-course">
               <small>02</small>
               <h3>Excel</h3>
-              <p>Practical spreadsheet skills.</p>
+              <p>Explore formulas, organise datasets and build clear spreadsheets for everyday study and workplace tasks.</p>
             </article>
 
             <article>
               <small>03</small>
               <h3>SQL</h3>
-              <p>Understand and work with databases.</p>
+              <p>Discover how tables, queries and relationships help you retrieve and organise information.</p>
             </article>
 
             <article>
               <small>04</small>
               <h3>Data Analysis</h3>
-              <p>Turn information into useful insights.</p>
+              <p>Explore how to clean, examine and interpret data, then communicate the story behind the numbers.</p>
             </article>
 
             <article>
@@ -1210,6 +1318,30 @@ function renderTechSkills() {
 
       </main>
     `;
+}
+
+function renderExcelCourse() {
+  const topics = [
+    ['Getting started with Excel', 'Explore workbooks, worksheets, cells and the ribbon.'],
+    ['Entering and organising data', 'Enter, edit, copy and arrange information in a worksheet.'],
+    ['Formatting worksheets', 'Use number formats, alignment and cell styles to make data readable.'],
+    ['Formulas and cell references', 'Understand calculations and relative, absolute and mixed references.'],
+    ['Essential functions', 'Explore SUM, AVERAGE, COUNT, MIN and MAX.'],
+    ['Logical functions', 'Use IF, AND and OR to work with conditions.'],
+    ['Sorting, filtering and tables', 'Organise datasets and find the information you need.'],
+    ['Working with text and dates', 'Clean text and understand common date and time operations.'],
+    ['Lookup functions', 'Understand how XLOOKUP and VLOOKUP connect related data.'],
+    ['Charts and visualisation', 'Choose suitable charts and communicate patterns clearly.'],
+    ['PivotTables', 'Summarise datasets and explore trends across categories.'],
+    ['Practical spreadsheet projects', 'Plan a budget, a study tracker or a simple data report.']
+  ];
+  return `<main class="home">
+    ${commonNav()}
+    <section class="hero"><div class="eyebrow">TECH SKILLS · EXCEL</div><h1>Excel Topics</h1><p>Build spreadsheet confidence, from your first worksheet to useful data summaries.</p></section>
+    <section class="doors" aria-labelledby="excel-roadmap-heading"><div class="section-heading"><div><div class="eyebrow">COURSE ROADMAP</div><h2 id="excel-roadmap-heading">Your Excel learning roadmap</h2><p>Explore these topics in order. This is a topic preview; full lessons and exercises are not yet published.</p></div><span class="section-count">${topics.length} topics</span></div>
+    <div class="grid">${topics.map(([title, description], index) => `<article><small>${String(index + 1).padStart(2, '0')}</small><h3>${esc(title)}</h3><p>${esc(description)}</p></article>`).join('')}</div>
+    <button class="primary" type="button" data-a="tech-skills">Back to Tech Skills</button></section>
+    ${supportButton()}<footer>G WORLD · Discover What You Need to Know.</footer></main>`;
 }
 
 function renderPythonCourse() {
@@ -1264,7 +1396,7 @@ function renderPythonCourse() {
           </div>
 
           <button class="primary" data-a="payment">
-            UNLOCK FOR ${naira(3000)}
+            UNLOCK FOR <span data-payment-price>${naira(paymentInfo().amount)}</span>
           </button>
 
         </section>
@@ -1526,8 +1658,7 @@ function renderAiTech() {
           <h1>What is happening now?</h1>
 
           <p>
-            Important technology information is reviewed and updated
-            regularly so G WORLD does not remain static.
+            Understand the tools and ideas shaping technology. Explore practical uses, research and responsible ways to bring AI into your learning.
           </p>
 
         </section>
@@ -1555,19 +1686,19 @@ function renderAiTech() {
             <article>
               <small>01</small>
               <h3>AI Tools</h3>
-              <p>Useful tools and what they are designed to do.</p>
+              <p>Explore what AI tools can do, where they fall short and how to evaluate their outputs responsibly.</p>
             </article>
 
             <article>
               <small>02</small>
               <h3>AI Research</h3>
-              <p>Important developments and research.</p>
+              <p>Learn to interpret new findings, examine the evidence and distinguish a promising result from an established application.</p>
             </article>
 
             <article>
               <small>03</small>
               <h3>Technology</h3>
-              <p>Important technology developments.</p>
+              <p>Understand how emerging technologies affect learning and work, including questions of privacy, access and responsible use.</p>
             </article>
 
           </div>
@@ -1805,8 +1936,7 @@ function renderJambCbt() {
           <h1>Choose your practice area.</h1>
 
           <p>
-            G WORLD can use an approved question bank to generate
-            different practice sets without calling AI for every student.
+            Choose a subject group and a practice length that fits your study session. Practice questions will become available when the approved question bank is connected.
           </p>
 
         </section>
@@ -1893,25 +2023,25 @@ function renderJambCbtPractice() {
             <article data-a="cbt-start-10">
               <small>01</small>
               <h3>10 Questions</h3>
-              <p>Quick practice.</p>
+              <p>A short session for checking recall and identifying topics to revisit.</p>
             </article>
 
             <article data-a="cbt-start-20">
               <small>02</small>
               <h3>20 Questions</h3>
-              <p>Standard practice.</p>
+              <p>Build consistency with a focused set of questions across your chosen area.</p>
             </article>
 
             <article data-a="cbt-start-40">
               <small>03</small>
               <h3>40 Questions</h3>
-              <p>Extended practice.</p>
+              <p>Set aside more time to test your understanding across a broader practice set.</p>
             </article>
 
             <article data-a="cbt-start-full">
               <small>04</small>
               <h3>Full CBT</h3>
-              <p>Long-form practice.</p>
+              <p>Prepare for a longer session and practise maintaining focus across a full set.</p>
             </article>
 
           </div>
@@ -2231,7 +2361,7 @@ function renderWorkCourse() {
             learning content and certificate workflow.
           </p>
 
-          <div class="price">${naira(3000)}</div>
+          <div class="price" data-payment-price>${naira(paymentInfo().amount)}</div>
 
           <button class="primary full" data-a="payment">
             MAKE PAYMENT
@@ -2267,7 +2397,7 @@ function renderPayment() {
             <h1>Complete your payment</h1>
 
             <p>
-              This is a one-time payment of ${naira(pay.amount)}.
+              This is a one-time payment of <span data-payment-price>${naira(pay.amount)}</span>.
             </p>
           </div>
 
@@ -2275,7 +2405,7 @@ function renderPayment() {
 
             <div class="payment-card-top">
               <span>ONE-TIME ACCESS</span>
-              <strong>${naira(pay.amount)}</strong>
+              <strong data-payment-price>${naira(pay.amount)}</strong>
             </div>
 
             <div class="payment-purpose">
@@ -2299,24 +2429,24 @@ function renderPayment() {
 
               <div class="account-row">
                 <span>Provider</span>
-                <strong>${esc(pay.provider)}</strong>
+                <strong data-payment-detail="provider">${esc(pay.provider)}</strong>
               </div>
 
               <div class="account-row">
                 <span>Account Name</span>
-                <strong>${esc(pay.accountName)}</strong>
+                <strong data-payment-detail="accountName">${esc(pay.accountName)}</strong>
               </div>
 
               <div class="account-row">
                 <span>Account Number</span>
 
                 <strong>
-                  ${esc(pay.accountNumber)}
+                  <span data-payment-detail="accountNumber">${esc(pay.accountNumber)}</span>
 
                   <button
                     class="small-action"
                     type="button"
-                    data-copy="${esc(pay.accountNumber)}"
+                    data-copy="${esc(pay.accountNumber)}" data-payment-copy
                   >
                     COPY
                   </button>
@@ -2625,37 +2755,37 @@ function renderProjectWriter() {
             <article>
               <small>01</small>
               <h3>Understand Your Topic</h3>
-              <p>Understand what your topic is asking.</p>
+              <p>Identify the key ideas, define the scope and turn your topic into a clear research question.</p>
             </article>
 
             <article>
               <small>02</small>
               <h3>Chapter One</h3>
-              <p>Build the introduction and research problem.</p>
+              <p>Set the context, explain the problem and connect your objectives to the questions your project will answer.</p>
             </article>
 
             <article>
               <small>03</small>
               <h3>Chapter Two</h3>
-              <p>Build the literature review.</p>
+              <p>Compare relevant sources, organise the main themes and identify the gap your research explores.</p>
             </article>
 
             <article>
               <small>04</small>
               <h3>Chapter Three</h3>
-              <p>Build the methodology.</p>
+              <p>Explain your research design, sampling choices and how you plan to collect and analyse evidence.</p>
             </article>
 
             <article>
               <small>05</small>
               <h3>Chapter Four</h3>
-              <p>Understand analysis and presentation.</p>
+              <p>Present findings clearly using appropriate tables or figures, and explain how they address your questions.</p>
             </article>
 
             <article>
               <small>06</small>
               <h3>Chapter Five</h3>
-              <p>Build conclusions and recommendations.</p>
+              <p>Connect your conclusions to the findings, acknowledge limitations and propose practical recommendations.</p>
             </article>
 
           </div>
@@ -2669,66 +2799,29 @@ function renderProjectWriter() {
 }
 
 function renderInfoHub() {
-  const titles = {
-      opportunities: "Opportunities",
-      research: "Discoveries & Research",
-      academic: "Academic Resources"
-    };
+  const hubs = {
+    opportunities: {
+      title: 'Opportunities', summary: 'Find a pathway that fits your ambitions. Prepare thoughtfully, compare your options and take the next step with confidence.',
+      tips: [['Know your direction', 'Start with your interests and current skills. Decide whether your next step is further study, practical experience or a professional pathway.'], ['Check the requirements', 'Read eligibility criteria, required documents and deadlines carefully. Confirm details with the organisation offering the opportunity.'], ['Prepare a strong application', 'Keep your CV and supporting documents organised. Tailor your statement to the opportunity and allow time for a careful review.']]
+    },
+    research: {
+      title: 'Discoveries & Research', summary: 'Build the habits of a curious, critical reader. Explore ideas, assess the evidence and connect new findings to what you already know.',
+      tips: [['Start with a good question', 'Be specific about what you want to understand. A focused question makes it easier to find relevant literature and compare perspectives.'], ['Evaluate the evidence', 'Check who conducted the research, how the study was designed and what limitations the authors acknowledge. A headline rarely tells the whole story.'], ['Keep a research trail', 'Record useful sources, publication dates and your own notes. Separate direct quotations from your interpretations and acknowledge the work you use.']]
+    },
+    academic: {
+      title: 'Academic Resources', summary: 'Study with a clearer plan. Develop practical routines for reading, revision and academic writing, one manageable session at a time.',
+      tips: [['Plan your study sessions', 'Choose a specific goal for each session. Break larger topics into smaller tasks and leave time to revisit difficult ideas.'], ['Practise active recall', 'Close your notes and explain an idea in your own words. Use practice questions to find gaps, then return to the topics that need attention.'], ['Write and reference clearly', 'Build your argument around evidence. Keep source details as you read, use a consistent referencing style and leave time to revise your work.']]
+    }
+  };
+  const hub = hubs[state.screen];
   return `
-      <main class="home">
-
-        ${commonNav()}
-
-        <section class="hero">
-
-          <div class="eyebrow">G WORLD</div>
-
-          <h1>${titles[state.screen]}</h1>
-
-          <p>
-            Important information is organised centrally and surfaced
-            in the section where it is useful.
-          </p>
-
-        </section>
-
-        <section class="continue">
-
-          <div>
-            <div class="eyebrow">NEW UPDATES</div>
-
-            <h2>Current information</h2>
-
-            <p>
-              Newly approved information appears first, while older
-              information remains available under Existing Information.
-            </p>
-          </div>
-
-        </section>
-
-        <section class="doors">
-
-          <h2>Existing Information</h2>
-
-          <div class="grid">
-
-            <article>
-              <small>01</small>
-              <h3>Information Library</h3>
-              <p>
-                Previously approved information remains accessible.
-              </p>
-            </article>
-
-          </div>
-
-        </section>
-
-        ${supportButton()}
-
-      </main>
-    `;
+    <main class="home">
+      ${commonNav()}
+      <section class="hero"><div class="eyebrow">G WORLD · KNOWLEDGE HUB</div><h1>${hub.title}</h1><p>${hub.summary}</p></section>
+      <section class="continue"><div><div class="eyebrow">NEW UPDATES</div><h2>Your information hub</h2><p>Published updates will appear here when the information service is connected. In the meantime, start with the practical guidance below.</p></div><span class="status-pill">GETTING STARTED</span></section>
+      <section class="doors"><h2>A useful place to begin</h2><div class="grid">${hub.tips.map(([title, text], i) => `<article><small>0${i + 1}</small><h3>${title}</h3><p>${text}</p></article>`).join('')}</div></section>
+      ${supportButton()}
+    </main>`;
 }
 
 function renderAdminGate() {
@@ -2738,7 +2831,7 @@ function renderAdminGate() {
         <section class="panel admin-gate">
 
           <div class="form-brand">
-            <span>G</span><b>G WORLD</b>
+            ${brandIcon()}<b>G WORLD</b>
           </div>
 
           <div class="eyebrow">SECURITY CHECK</div>
@@ -2801,20 +2894,7 @@ function renderAdmin() {
   return `
       <main class="home admin-home">
 
-        <nav>
-
-          <div class="mini">
-            <b>G</b> G WORLD ADMIN
-          </div>
-
-          <div class="nav-user">
-            <span>ADMIN</span>
-            <button class="logout-btn" data-a="admin-logout">
-              LOG OUT
-            </button>
-          </div>
-
-        </nav>
+        ${adminNav()}
 
         <section class="hero">
 
@@ -3570,42 +3650,25 @@ function renderAdminSettings() {
 
 
 function adminNav() {
-  return `
-    <nav>
-
-      <div class="mini">
-        <b>G</b> G WORLD ADMIN
-      </div>
-
-      <div class="nav-user">
-
-        <button
-          class="secondary"
-          data-a="admin"
-        >
-          DASHBOARD
-        </button>
-
-        <button
-          class="logout-btn"
-          data-a="admin-logout"
-        >
-          LOG OUT
-        </button>
-
-      </div>
-
-    </nav>
-  `;
+  return navigationHeader(true);
 }
 
 document.addEventListener("click", async event => {
 
-  const target = event.target.closest("[data-a]");
+  const target = event.target.closest("[data-a], [data-copy], [data-course-combination]");
 
   if (!target) return;
 
-  const action = target.dataset.a;
+  const action = target.dataset.a || "";
+
+  if (action === 'nav-menu') {
+    const header = target.closest('.site-header');
+    const opened = header.classList.toggle('menu-open');
+    target.setAttribute('aria-expanded', String(opened));
+    target.setAttribute('aria-label', opened ? 'Close navigation menu' : 'Open navigation menu');
+    return;
+  }
+  if (target.classList.contains('site-nav-link')) closeNavigation();
 
   if (action === "theme") {
     const next =
@@ -3614,6 +3677,7 @@ document.addEventListener("click", async event => {
         : "light";
     document.documentElement.dataset.theme = next;
     localStorage.setItem("gworld-theme", next);
+    document.querySelector('meta[name="theme-color"]').content = next === "light" ? "#ffffff" : "#000000";
     return;
   }
 
@@ -3667,6 +3731,19 @@ document.addEventListener("click", async event => {
     return;
   }
 
+  if (action === 'filter-faculty') {
+    const grid = app.querySelector('#home-faculty-grid');
+    if (grid) {
+      grid.innerHTML = facultyCards(target.dataset.filter);
+      app.querySelectorAll('.faculty-filters button').forEach(button => button.setAttribute('aria-pressed', String(button === target)));
+    }
+    return;
+  }
+  if (action.startsWith('faculty-') && FACULTIES.some(faculty => action === `faculty-${faculty.id}`)) {
+    goTo(action);
+    return;
+  }
+
   if (action === "courses") {
     goTo("courses");
     return;
@@ -3709,6 +3786,11 @@ document.addEventListener("click", async event => {
 
   if (action === "work-ready") {
     goTo("work-ready");
+    return;
+  }
+
+  if (action === "excel-course") {
+    goTo("excel-course");
     return;
   }
 
@@ -3790,7 +3872,7 @@ document.addEventListener("click", async event => {
 
   if (action === "payment") {
     goTo("payment");
-    loadSettings().then(render);
+    loadSettings(); // Update displayed payment details without resetting an in-flight submission.
     return;
   }
 
@@ -3906,21 +3988,17 @@ document.addEventListener("click", async event => {
 
   if (action === "admin-settings") {
     goTo("admin-settings");
-    loadSettings().then(render);
+    // Do not replace an editable settings form after it has been shown.
+    loadSettings();
     return;
   }
 
   if (action === "admin-logout") {
-    if (state.token) {
-      api("/api/auth/logout", { method: "POST" }).catch(() => {});
-      state.token = "";
-      const saved = JSON.parse(localStorage.getItem("gworld") || "{}");
-      delete saved.token;
-      localStorage.setItem("gworld", JSON.stringify(saved));
-    }
-    state.admin = null;
+    // Revoking the admin token also ends its member session; do not leave a
+    // signed-in-looking homepage backed by a revoked token.
+    clearSession();
     state.history = [];
-    state.screen = "home";
+    state.screen = "entry";
     render();
     return;
   }
@@ -4065,6 +4143,9 @@ document.addEventListener("submit", async event => {
         })
       });
 
+      if (!result.member?.gworldId || !result.member?.name || !result.token) {
+        throw new Error("The G WORLD service returned incomplete account details. Please try again later.");
+      }
       saveSession(result.member, result.token);
 
       state.loading = false;
@@ -4129,6 +4210,9 @@ document.addEventListener("submit", async event => {
         })
       });
 
+      if (!result.member?.gworldId || !result.member?.name || !result.token) {
+        throw new Error("The G WORLD service returned incomplete account details. Please try again later.");
+      }
       saveSession(result.member, result.token);
 
       state.loading = false;
@@ -4316,36 +4400,55 @@ document.addEventListener("input", event => {
     });
 });
 
+document.addEventListener('keydown', event => {
+  if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('article[role="button"]')) {
+    event.preventDefault();
+    event.target.click();
+  }
+});
+
 function startIntro() {
-  setTimeout(() => {
-
-    if (state.member) {
-      state.screen = "home";
-    } else {
-      state.screen = "entry";
+  setTimeout(async () => {
+    try {
+      if (localStorage.getItem("gworld-logout-pending")) {
+        await api("/api/auth/logout", { method: "POST" });
+        localStorage.removeItem("gworld-logout-pending");
+        state.member = null;
+        state.token = "";
+        state.screen = "entry";
+        render();
+        return;
+      }
+      const result = await api("/api/me");
+      if (!validMember(result.member)) throw new Error("The G WORLD service returned incomplete account details.");
+      saveSession(result.member, state.token);
+      state.error = "";
+    } catch (error) {
+      state.member = null;
+      state.token = "";
+      if (error.status === 401) {
+        localStorage.removeItem("gworld");
+        state.error = "";
+      } else {
+        state.error = "We could not verify your session. Check the service connection, then try signing in again.";
+      }
     }
-
+    state.screen = state.member ? "home" : "entry";
     render();
-
   }, 2800);
 }
 
 const savedTheme = localStorage.getItem("gworld-theme");
 if (savedTheme) {
   document.documentElement.dataset.theme = savedTheme;
+  document.querySelector('meta[name="theme-color"]').content = savedTheme === "light" ? "#ffffff" : "#000000";
 }
 
 const savedMember = localStorage.getItem("gworld");
 
-if (savedMember) {
-  try {
-    const parsed = JSON.parse(savedMember);
-    state.member = parsed;
-    state.token = parsed.token || "";
-  } catch {
-    localStorage.removeItem("gworld");
-  }
-}
+// Validate every restored session with /api/me, including cookie-only sessions.
+// A name or member ID in localStorage must never bypass sign-in.
+state.token = cachedToken(savedMember);
 
 render();
 startIntro();
